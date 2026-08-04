@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Ethan Tang — Lynbrook High School. Student, builder, problem-solver. Projects, achievements, and everything in between.">
+  <meta name="author" content="Ethan Tang">
+  <meta name="theme-color" content="#0a0a12">
+  <meta property="og:title" content="Ethan Tang — Lynbrook HS">
+  <meta property="og:description" content="Portfolio of a Lynbrook High School student.">
+  <meta property="og:type" content="website">
+  <meta name="color-scheme" content="dark light">
+  <title>Ethan Tang — Lynbrook High School</title>
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>E</text></svg>">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Preload the LCP font (hero display type). crossorigin required for font preloads. -->
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="https://fonts.gstatic.com/s/spacegrotesk/v21/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+
+  <link rel="stylesheet" href="css/main.css">
+
+  <!-- GSAP + ScrollTrigger + SplitText + Lenis from CDN -->
+  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrollTrigger.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/SplitText.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/lenis@1.1.14/dist/lenis.min.js"></script>
+  <script defer src="js/main.js"></script>
+
+  <!-- Critical CSS to prevent FOUC -->
+  <style>
+    html { background: #0a0a12; }
+    .preloader { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; background: #0a0a12; transition: opacity .6s ease, visibility .6s; }
+    .preloader--done { opacity: 0; visibility: hidden; pointer-events: none; }
+    .preloader__text { font-family: 'Space Grotesk', sans-serif; font-size: clamp(2rem, 6vw, 4rem); color: #fff; letter-spacing: .05em; }
+  </style>
+
+  <script>
+    // Run before any scroll restoration: smooth-scroll sites start at top.
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    if (window.scrollY > 0) window.scrollTo(0, 0);
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <!-- Preloader -->
+  <div class="preloader" id="preloader" aria-hidden="true">
+    <div class="preloader__text">ET</div>
+  </div>
+
+  <!-- Custom cursor -->
+  <div class="cursor" id="cursor" aria-hidden="true"></div>
+  <div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
+
+  <!-- Scroll progress -->
+  <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+
+  <!-- Nav -->
+  <header class="nav" id="nav">
+    <div class="nav__inner container">
+      <a class="nav__logo" href="#home">E<span class="nav__logo-accent">T</span></a>
+      <nav class="nav__links" aria-label="Primary">
+        <a href="#about" class="nav__link">About</a>
+        <a href="#academics" class="nav__link">Academics</a>
+        <a href="#projects" class="nav__link">Projects</a>
+        <a href="#achievements" class="nav__link">Achievements</a>
+        <a href="#contact" class="nav__link nav__link--cta">Contact</a>
+      </nav>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+        <span class="theme-toggle__icon">☾</span>
+      </button>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- HERO -->
+    <section class="hero" id="home">
+      <div class="hero__bg" id="heroBg" aria-hidden="true"></div>
+      <div class="hero__grid container">
+        <div class="hero__content">
+          <p class="hero__eyebrow reveal">Lynbrook High School · Class of 2027</p>
+          <h1 class="hero__title" id="heroTitle">
+            <span class="hero__line">Hey, I'm</span>
+            <span class="hero__line hero__line--name">Ethan Tang.</span>
+          </h1>
+          <p class="hero__subtitle reveal">Student · Builder · Problem-solver</p>
+          <div class="hero__cta reveal">
+            <a href="#projects" class="btn btn--primary magnetic">View my work</a>
+            <a href="#contact" class="btn btn--ghost magnetic">Get in touch</a>
+          </div>
+        </div>
+        <div class="hero__stats reveal">
+          <div class="stat"><span class="stat__num" data-count="3">0</span><span class="stat__label">Years at Lynbrook</span></div>
+          <div class="stat"><span class="stat__num" data-count="10">0</span><span class="stat__label">Projects built</span></div>
+          <div class="stat"><span class="stat__num" data-count="8">0</span><span class="stat__label">Clubs & teams</span></div>
+        </div>
+      </div>
+      <div class="hero__scroll-hint" aria-hidden="true">
+        <span>scroll</span>
+        <div class="hero__scroll-line"></div>
+      </div>
+    </section>
+
+    <!-- ABOUT -->
+    <section class="section about" id="about">
+      <div class="container">
+        <h2 class="section__title reveal"><span class="section__num">01</span> About</h2>
+        <div class="about__grid">
+          <p class="about__lead reveal">
+            I'm a student at <strong>Lynbrook High School</strong> who loves building things,
+            solving problems, and learning how the world works.
+          </p>
+          <div class="about__body">
+            <p class="reveal">[Your detailed bio goes here — passions, goals, what drives you. Replace this placeholder with your story.]</p>
+            <p class="reveal">[What you're working on now. A project, a skill, a goal for the year.]</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ACADEMICS -->
+    <section class="section academics" id="academics">
+      <div class="container">
+        <h2 class="section__title reveal"><span class="section__num">02</span> Academics</h2>
+        <div class="academics__grid">
+          <article class="card reveal">
+            <h3 class="card__title">Courses</h3>
+            <ul class="card__list">
+              <li>[AP / Honors course 1]</li>
+              <li>[AP / Honors course 2]</li>
+              <li>[AP / Honors course 3]</li>
+            </ul>
+          </article>
+          <article class="card reveal">
+            <h3 class="card__title">Interests</h3>
+            <ul class="card__list">
+              <li>[Subject you love]</li>
+              <li>[Subject you love]</li>
+              <li>[Subject you love]</li>
+            </ul>
+          </article>
+          <article class="card reveal">
+            <h3 class="card__title">Honors</h3>
+            <ul class="card__list">
+              <li>[Academic honor 1]</li>
+              <li>[Academic honor 2]</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROJECTS -->
+    <section class="section projects" id="projects">
+      <div class="container">
+        <h2 class="section__title reveal"><span class="section__num">03</span> Projects</h2>
+        <div class="projects__grid">
+          <article class="project-card reveal">
+            <div class="project-card__media" style="--card-hue: 200">
+              <div class="project-card__thumb"><span>01</span></div>
+            </div>
+            <div class="project-card__body">
+              <h3 class="project-card__title">[Project Name]</h3>
+              <p class="project-card__desc">[Short description of what it does and why you built it.]</p>
+              <div class="project-card__tags">
+                <span class="tag">[Tech]</span><span class="tag">[Tech]</span>
+              </div>
+            </div>
+          </article>
+          <article class="project-card reveal">
+            <div class="project-card__media" style="--card-hue: 300">
+              <div class="project-card__thumb"><span>02</span></div>
+            </div>
+            <div class="project-card__body">
+              <h3 class="project-card__title">[Project Name]</h3>
+              <p class="project-card__desc">[Short description.]</p>
+              <div class="project-card__tags">
+                <span class="tag">[Tech]</span><span class="tag">[Tech]</span>
+              </div>
+            </div>
+          </article>
+          <article class="project-card reveal">
+            <div class="project-card__media" style="--card-hue: 140">
+              <div class="project-card__thumb"><span>03</span></div>
+            </div>
+            <div class="project-card__body">
+              <h3 class="project-card__title">[Project Name]</h3>
+              <p class="project-card__desc">[Short description.]</p>
+              <div class="project-card__tags">
+                <span class="tag">[Tech]</span><span class="tag">[Tech]</span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ACHIEVEMENTS (pinned timeline) -->
+    <section class="section achievements" id="achievements">
+      <div class="container">
+        <h2 class="section__title reveal"><span class="section__num">04</span> Achievements</h2>
+      </div>
+      <div class="timeline" id="timeline">
+        <div class="timeline__item timeline__item--1">
+          <div class="timeline__year">2025</div>
+          <h3 class="timeline__title">[Achievement]</h3>
+          <p class="timeline__desc">[What you did and why it matters.]</p>
+        </div>
+        <div class="timeline__item timeline__item--2">
+          <div class="timeline__year">2024</div>
+          <h3 class="timeline__title">[Achievement]</h3>
+          <p class="timeline__desc">[What you did.]</p>
+        </div>
+        <div class="timeline__item timeline__item--3">
+          <div class="timeline__year">2023</div>
+          <h3 class="timeline__title">[Achievement]</h3>
+          <p class="timeline__desc">[What you did.]</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SKILLS -->
+    <section class="section skills" id="skills">
+      <div class="container">
+        <h2 class="section__title reveal"><span class="section__num">05</span> Skills</h2>
+        <div class="skills__cloud reveal">
+          <span class="skill-pill">[Skill]</span>
+          <span class="skill-pill">[Skill]</span>
+          <span class="skill-pill">[Skill]</span>
+          <span class="skill-pill">[Skill]</span>
+          <span class="skill-pill">[Skill]</span>
+          <span class="skill-pill">[Skill]</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTACT -->
+    <section class="section contact" id="contact">
+      <div class="container">
+        <h2 class="section__title reveal"><span class="section__num">06</span> Contact</h2>
+        <p class="contact__lead reveal">Let's talk. [your@email.com]</p>
+        <a class="btn btn--primary magnetic reveal" href="mailto:your@email.com">Say hello</a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <div class="container footer__inner">
+      <p>© <span id="year">2025</span> Ethan Tang · Lynbrook High School</p>
+      <div class="footer__links">
+        <a href="#" class="footer__link">[GitHub]</a>
+        <a href="#" class="footer__link">[LinkedIn]</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
