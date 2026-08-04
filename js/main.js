@@ -56,32 +56,30 @@
     });
   }
 
-  /* ---------- CUSTOM CURSOR ---------- */
+  /* ---------- CUSTOM CURSOR + SPOTLIGHT ---------- */
   // Position via transform/translate, not top/left — stays on the
   // compositor (gsap-performance: prefer transforms over layout props).
   const cursor = document.getElementById('cursor');
   const cursorRing = document.getElementById('cursorRing');
+  const cursorGlow = document.getElementById('cursorGlow');
   if (!prefersReduced && !isCoarse && cursor && cursorRing) {
     const pos = { x: -100, y: -100 };
-    let ringVisible = false;
 
     // quickTo reuses a single tween per property instead of creating new
     // tweens on every mousemove (gsap-performance: mouse followers).
-    const xTo = gsap.quickTo(cursorRing, 'x', { duration: 0.3, ease: 'power3' });
-    const yTo = gsap.quickTo(cursorRing, 'y', { duration: 0.3, ease: 'power3' });
+    const ringXTo = gsap.quickTo(cursorRing, 'x', { duration: 0.3, ease: 'power3' });
+    const ringYTo = gsap.quickTo(cursorRing, 'y', { duration: 0.3, ease: 'power3' });
+    // Glow lags the ring slightly for depth.
+    const glowXTo = cursorGlow ? gsap.quickTo(cursorGlow, 'x', { duration: 0.55, ease: 'power3' }) : null;
+    const glowYTo = cursorGlow ? gsap.quickTo(cursorGlow, 'y', { duration: 0.55, ease: 'power3' }) : null;
 
     window.addEventListener('mousemove', (e) => {
       pos.x = e.clientX;
       pos.y = e.clientY;
       cursor.style.transform = `translate(${pos.x}px, ${pos.y}px) translate(-50%, -50%)`;
-      if (!ringVisible) {
-        ringVisible = true;
-        xTo(e.clientX);
-        yTo(e.clientY);
-      } else {
-        xTo(e.clientX);
-        yTo(e.clientY);
-      }
+      ringXTo(e.clientX);
+      ringYTo(e.clientY);
+      if (glowXTo && glowYTo) { glowXTo(e.clientX); glowYTo(e.clientY); }
     }, { passive: true });
 
     document.querySelectorAll('a, button, .project-card, .skill-pill').forEach((el) => {
@@ -168,6 +166,105 @@
     });
   }
 
+  /* ---------- CARD SPOTLIGHT (cursor-tracking glow) ---------- */
+  function initSpotlights() {
+    if (isCoarse) return;
+    document.querySelectorAll('.card, .project-card').forEach((el) => {
+      el.addEventListener('mousemove', (e) => {
+        const r = el.getBoundingClientRect();
+        el.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
+        el.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`);
+      });
+    });
+  }
+
+  /* ---------- MAGNETIC HERO NAME CHARS ---------- */
+  function initMagneticChars() {
+    if (prefersReduced || isCoarse) return;
+    const nameLine = document.querySelector('.hero__line--name');
+    if (!nameLine) return;
+    const chars = gsap.utils.toArray(nameLine.querySelectorAll('.hero__name-char'));
+    if (!chars.length) return;
+    // quickTo per char — one tween each, reused (gsap-performance).
+    const magnetPairs = chars.map((ch) => ({
+      xTo: gsap.quickTo(ch, 'x', { duration: 0.4, ease: 'power3' }),
+      yTo: gsap.quickTo(ch, 'y', { duration: 0.4, ease: 'power3' }),
+      ox: 0, oy: 0
+    }));
+    const strength = 22;
+    nameLine.addEventListener('mousemove', (e) => {
+      const r = nameLine.getBoundingClientRect();
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      chars.forEach((ch, i) => {
+        const cr = ch.getBoundingClientRect();
+        const dx = e.clientX - (cr.left + cr.width / 2);
+        const dy = e.clientY - (cr.top + cr.height / 2);
+        const d = Math.hypot(dx, dy);
+        const pull = d < 90 ? (1 - d / 90) * strength : 0;
+        const ang = Math.atan2(dy, dx);
+        // Push the char gently AWAY from the cursor; restore to base.
+        magnetPairs[i].xTo(-Math.cos(ang) * pull * 0.5);
+        magnetPairs[i].yTo(-Math.sin(ang) * pull * 0.5);
+      });
+    });
+    nameLine.addEventListener('mouseleave', () => {
+      magnetPairs.forEach((m) => { m.xTo(0); m.yTo(0); });
+    });
+  }
+
+  /* ---------- SCROLLSPY (active nav link) ---------- */
+  function initScrollspy() {
+    const sections = gsap.utils.toArray('section[id]');
+    const links = gsap.utils.toArray('.nav__link');
+    if (!sections.length || !links.length) return;
+    const map = new Map();
+    links.forEach((l) => map.set(l.getAttribute('href').slice(1), l));
+    let ticking = false;
+    const update = () => {
+      ticking = false;
+      const y = window.scrollY + window.innerHeight * 0.35;
+      let current = null;
+      sections.forEach((s) => { if (s.offsetTop <= y) current = s.id; });
+      links.forEach((l) => l.classList.remove('is-active'));
+      if (current && map.has(current)) map.get(current).classList.add('is-active');
+    };
+    window.addEventListener('scroll', () => {
+      if (!ticking) { ticking = true; requestAnimationFrame(update); }
+    }, { passive: true });
+    // Lenis-driven scroll also updates the spy (rAF-throttled)
+    const lenis = window.__lenis;
+    if (lenis) lenis.on('scroll', () => {
+      if (!ticking) { ticking = true; requestAnimationFrame(update); }
+    });
+    update();
+  }
+
+  /* ---------- TIMELINE PROGRESS RAIL ---------- */
+  // A gradient rail grows down the first timeline column as you scroll
+  // through the section — GSAP scrub, zero per-frame JS cost.
+  function initTimelineProgress() {
+    const timeline = document.getElementById('timeline');
+    const items = gsap.utils.toArray('.timeline__item');
+    if (!timeline || !items.length) return;
+    const rail = document.createElement('div');
+    rail.className = 'timeline__rail';
+    rail.setAttribute('aria-hidden', 'true');
+    timeline.appendChild(rail);
+    gsap.fromTo(rail,
+      { scaleY: 0 },
+      {
+        scaleY: 1, ease: 'none', transformOrigin: 'top center',
+        scrollTrigger: {
+          trigger: timeline,
+          start: 'top 75%',
+          end: 'bottom 60%',
+          scrub: 0.4
+        }
+      }
+    );
+  }
+
   /* ---------- BOOT ---------- */
   function boot(hasGsap) {
     initTheme();
@@ -175,6 +272,7 @@
     initCounters();
     initFallbackReveals(hasGsap);
     initTilt();
+    initSpotlights();
     onScrollNav();
     onScrollProgress();
     window.addEventListener('scroll', () => { onScrollNav(); onScrollProgress(); }, { passive: true });
@@ -198,11 +296,14 @@
       gsap.set('.reveal', { opacity: 1, y: 0 });
       gsap.set('.hero__line', { opacity: 1, y: 0 });
       gsap.set('.hero__name-char', { opacity: 1 });
+      // Static-first features still work without motion
+      initScrollspy();
+      initTimelineProgress();
       return;
     }
-      // Hero bg parallax
+      // Hero bg parallax — desktop only; scrub on low-end mobile adds jank
       const heroBg = document.getElementById('heroBg');
-      if (heroBg) {
+      if (heroBg && !isCoarse) {
         gsap.to(heroBg, {
           yPercent: 25,
           ease: 'none',
@@ -266,6 +367,36 @@
           }
         });
       }
+      // After split, make the name chars magnetically reactive (unique interaction)
+      initMagneticChars();
+
+      // Hero phrase ticker — scramble-decodes on interval (unique signature)
+      const ticker = document.getElementById('ticker');
+      if (ticker && typeof ScrambleTextPlugin !== 'undefined') {
+        gsap.registerPlugin(ScrambleTextPlugin);
+        const phrases = ['student', 'builder', 'problem-solver', 'lynbrook', 'class of 2027'];
+        let p = 0;
+        const next = () => {
+          ticker.textContent = phrases[p % phrases.length];
+          gsap.fromTo(ticker, { opacity: 0.35 }, { opacity: 1, duration: 0.4, ease: 'power2.out' });
+          p++;
+        };
+        next();
+        setInterval(() => {
+          gsap.to(ticker, {
+            opacity: 0.15, duration: 0.2, ease: 'power1.in',
+            onComplete() {
+              ticker.textContent = phrases[p % phrases.length];
+              gsap.to(ticker, { opacity: 1, duration: 0.35, ease: 'power2.out' });
+              p++;
+            }
+          });
+        }, 2600);
+      }
+
+      // Scrollspy + timeline rail (unique progress feel)
+      initScrollspy();
+      initTimelineProgress();
 
       // Timeline: pinned scrub with stagger
       const timeline = document.getElementById('timeline');
@@ -275,7 +406,9 @@
           scrollTrigger: {
             trigger: timeline,
             start: 'top 70%',
-            toggleActions: 'play none none reverse'
+            // play once, stay played — reversing re-applies the x-offset
+            // (overflow on mobile) and re-hides content when scrolling back up
+            toggleActions: 'play none none none'
           }
         });
         items.forEach((item, i) => {
@@ -307,9 +440,11 @@
     const LenisLib = typeof Lenis !== 'undefined' ? Lenis : window.Lenis;
     try {
       const lenis = new LenisLib({
-        duration: 1.2,
+        duration: 0.9,
         easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-        smoothWheel: true
+        smoothWheel: true,
+        wheelMultiplier: 1,
+        touchMultiplier: 1.5
       });
 
       // Drive Lenis with its own rAF loop — always running, even when
