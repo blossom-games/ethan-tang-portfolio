@@ -96,13 +96,28 @@
         <a href="#achievements" class="nav__link">Achievements</a>
         <a href="#contact" class="nav__link nav__link--cta">Contact</a>
       </nav>
-      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
-        <span class="theme-toggle__icon">☾</span>
-      </button>
+      <div class="nav__actions">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+          <span class="theme-toggle__icon">☾</span>
+        </button>
+        <button class="nav__toggle" id="navToggle" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks">
+          <span class="nav__toggle-bar"></span>
+          <span class="nav__toggle-bar"></span>
+          <span class="nav__toggle-bar"></span>
+        </button>
+      </div>
     </div>
+    <nav class="nav__links" id="navLinks" aria-label="Primary" aria-hidden="true">
+      <a href="#about" class="nav__link">About</a>
+      <a href="#academics" class="nav__link">Academics</a>
+      <a href="#projects" class="nav__link">Projects</a>
+      <a href="#achievements" class="nav__link">Achievements</a>
+      <a href="#skills" class="nav__link">Skills</a>
+      <a href="#contact" class="nav__link nav__link--cta">Contact</a>
+    </nav>
   </header>
 
-  <main id="main">
+  <main id="main" tabindex="-1">
 
     <!-- HERO -->
     <section class="hero" id="home">
@@ -288,8 +303,7 @@
     <div class="container footer__inner">
       <p>© <span id="year">2025</span> Ethan Tang · Lynbrook High School</p>
       <div class="footer__links">
-        <a href="#" class="footer__link">[GitHub]</a>
-        <a href="#" class="footer__link">[LinkedIn]</a>
+        <!-- Dead links removed — add real GitHub/LinkedIn URLs here -->
       </div>
     </div>
   </footer>

@@ -35,6 +35,44 @@
   // Owned by Motion One's scroll() in index.html (module script) — the
   // transform is updated off-thread there; no JS per frame needed here.
 
+  /* ---------- MOBILE NAV TOGGLE ---------- */
+  const navToggle = document.getElementById('navToggle');
+  const navLinks = document.getElementById('navLinks');
+  function syncNavAria(open) {
+    navToggle.setAttribute('aria-expanded', String(open));
+    navToggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    navLinks.setAttribute('aria-hidden', String(!open));
+    navLinks.classList.toggle('is-open', open);
+  }
+  if (navToggle && navLinks) {
+    navToggle.addEventListener('click', () => {
+      const open = navToggle.getAttribute('aria-expanded') === 'false';
+      syncNavAria(open);
+      // Close on Escape; return focus to the toggle (menu is a dialog-like
+      // overlay on mobile — Escape should dismiss and hand focus back).
+      if (open) {
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && navToggle.getAttribute('aria-expanded') === 'true') {
+            syncNavAria(false);
+            navToggle.focus();
+          }
+        }, { once: true });
+      }
+    });
+    // Close on outside click (taps on the page close the menu — a menu
+    // that stays open over content is a classic mobile-UX failure).
+    document.addEventListener('click', (e) => {
+      if (navToggle.getAttribute('aria-expanded') === 'true' &&
+          !e.target.closest('.nav__inner')) {
+        syncNavAria(false);
+      }
+    }, { passive: true });
+    // Close when a link is chosen (the anchor target is visible then).
+    navLinks.addEventListener('click', (e) => {
+      if (e.target.closest('a')) syncNavAria(false);
+    });
+  }
+
   /* ---------- THEME TOGGLE ---------- */
   const themeToggle = document.getElementById('themeToggle');
   const themeIcon = themeToggle ? themeToggle.querySelector('.theme-toggle__icon') : null;
