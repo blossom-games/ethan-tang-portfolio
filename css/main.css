@@ -153,9 +153,11 @@
   .cursor-ring.is-active { width: 64px; height: 64px; opacity: 1; background: rgba(124, 108, 255, .12); }
   /* Cursor glow: soft radial light that follows the pointer (unique signature).
      Compositor-friendly — transform only, one layer, tiny radius. */
+  /* Cursor glow: 280px (was 560px) — the layer area is composited every
+     mouse frame; halving the size quarters the fill cost. Same effect. */
   .cursor-glow {
     position: fixed; top: 0; left: 0; pointer-events: none; z-index: 5;
-    width: 560px; height: 560px; border-radius: 50%;
+    width: 280px; height: 280px; border-radius: 50%;
     background: radial-gradient(circle, var(--cursor-glow-c) 0%, transparent 65%);
     transform: translate(-50%, -50%); will-change: transform;
   }
@@ -168,15 +170,11 @@
   .scroll-progress { position: fixed; top: 0; left: 0; height: 3px; width: 100%; background: var(--gradient); transform-origin: 0 50%; transform: scaleX(0); z-index: 9000; }
 
   /* Nav */
-  .nav { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; transition: background .3s ease, backdrop-filter .3s ease, border-color .3s ease; border-bottom: 1px solid transparent; }
+  .nav { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; transition: background .3s ease, border-color .3s ease; border-bottom: 1px solid transparent; }
+  /* Frost via translucent solid, NOT backdrop-filter: a page-wide blur
+     re-rasterizes the entire backdrop on every scroll frame (the
+     #1 Windows-Chrome jank source). Losing frost, keeping everything else. */
   .nav.is-scrolled { background: var(--bg-glass); border-bottom-color: var(--border); }
-  /* Blur only on capable devices: backdrop-filter re-rasterizes the
-     backdrop every scroll frame — the biggest smooth-scroll jank source. */
-  @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-    @media (min-width: 901px) and (hover: hover) and (prefers-reduced-motion: no-preference) {
-      .nav.is-scrolled { -webkit-backdrop-filter: blur(var(--glass-blur)); backdrop-filter: blur(var(--glass-blur)); }
-    }
-  }
   .nav__inner { display: flex; align-items: center; justify-content: space-between; height: var(--nav-h); }
   .nav__actions { display: flex; align-items: center; gap: var(--space-3); }
   .nav__toggle { display: none; width: 40px; height: 40px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
@@ -260,7 +258,7 @@
   .section__ghost {
     position: absolute; top: var(--space-8); right: clamp(.5rem, 3vw, 2rem);
     font-family: var(--font-display); font-weight: 700;
-    font-size: clamp(6rem, 16vw, 15rem); line-height: 1;
+    font-size: clamp(6rem, 16vw, 11rem); line-height: 1;
     color: transparent; -webkit-text-stroke: 1px var(--border-strong);
     pointer-events: none; z-index: 0; user-select: none;
     will-change: transform; /* scrub-parallax runs every scroll frame */
@@ -416,7 +414,7 @@
     padding: var(--space-4);
     background: var(--bg-glass);
     border-bottom: 1px solid var(--border);
-    -webkit-backdrop-filter: blur(var(--glass-blur)); backdrop-filter: blur(var(--glass-blur));
+    /* No backdrop-filter — same re-rasterization cost as the nav */
     transform: translateY(-12px); opacity: 0; visibility: hidden; pointer-events: none;
     transition: transform .3s var(--ease-out-expo), opacity .25s, visibility .25s;
   }

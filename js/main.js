@@ -361,32 +361,39 @@
 
     let last = performance.now();
     let running = true;
+    let rafId = 0;
     // Pause rendering entirely when the hero is off-screen — the scene
     // is fixed inside #heroCanvas, so it only matters while visible.
     const heroObserver = new IntersectionObserver((entries) => {
       running = entries[0].isIntersecting;
-      if (running) last = performance.now(); // avoid a dt jump on resume
+      if (running) {
+        last = performance.now(); // avoid a dt jump on resume
+        if (!rafId) rafId = requestAnimationFrame(raf);
+      } else if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
     }, { threshold: 0 });
     heroObserver.observe(hero);
 
     function raf(now) {
-      if (running) {
-        const dt = Math.min((now - last) / 1000, 0.05);
-        last = now;
-        layers.forEach((l, i) => {
-          l.rotation.y += dt * (0.05 + i * 0.03); // parallax: outer shells spin faster
-          l.rotation.x += dt * 0.008;
-        });
-        // Camera eases toward the mouse target (cheap lerp, transform-only).
-        camera.position.x += (target.tx - camera.position.x) * 0.05;
-        camera.position.y += (target.ty - camera.position.y) * 0.05;
-        camera.lookAt(0, 0, 0);
-        streakAnim(now, dt);
-        renderer.render(scene, camera);
-      }
-      requestAnimationFrame(raf);
+      rafId = 0;
+      if (!running) return; // observer restarts the loop when visible again
+      const dt = Math.min((now - last) / 1000, 0.05);
+      last = now;
+      layers.forEach((l, i) => {
+        l.rotation.y += dt * (0.05 + i * 0.03); // parallax: outer shells spin faster
+        l.rotation.x += dt * 0.008;
+      });
+      // Camera eases toward the mouse target (cheap lerp, transform-only).
+      camera.position.x += (target.tx - camera.position.x) * 0.05;
+      camera.position.y += (target.ty - camera.position.y) * 0.05;
+      camera.lookAt(0, 0, 0);
+      streakAnim(now, dt);
+      renderer.render(scene, camera);
+      rafId = requestAnimationFrame(raf);
     }
-    requestAnimationFrame(raf);
+    rafId = requestAnimationFrame(raf);
   }
 
   /* ---------- ANIME.JS: hero ticker (cycle + fade) ---------- */
