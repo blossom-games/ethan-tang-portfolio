@@ -30,6 +30,8 @@
   <script defer src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
   <script defer src="js/main.js"></script>
+  <!-- Fluid cursor trail: imported as ES module (fluid.js is a module) -->
+  <script type="module" src="js/fluid-boot.js"></script>
   <!-- Motion One (vanilla companion to the motion.svelte.dev examples) —
        scroll-driven animations, off-thread. -->
   <script type="module">
@@ -81,6 +83,7 @@
   <div class="cursor" id="cursor" aria-hidden="true"></div>
   <div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
   <div class="cursor-glow" id="cursorGlow" aria-hidden="true"></div>
+  <canvas id="fluid" aria-hidden="true"></canvas>
 
   <!-- Scroll progress -->
   <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>

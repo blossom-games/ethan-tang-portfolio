@@ -140,6 +140,18 @@
       el.addEventListener('mouseenter', () => cursorRing.classList.add('is-active'));
       el.addEventListener('mouseleave', () => cursorRing.classList.remove('is-active'));
     });
+
+    // Fluid cursor: tint the sim's palette to the site accent when the
+    // cursor is idle (imported module, guarded — no-op if unavailable).
+    const fluid = window.__fluid;
+    if (fluid) {
+      const tint = () => {
+        if (document.body.contains(cursor)) { // cursor element alive → idle
+          fluid.splatColor(124 / 255, 108 / 255, 255 / 255);
+        }
+      };
+      window.addEventListener('mousemove', tint, { passive: true });
+    }
   }
 
   /* ---------- MAGNETIC BUTTONS ---------- */
