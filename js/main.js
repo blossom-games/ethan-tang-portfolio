@@ -377,6 +377,123 @@
     );
   }
 
+  /* ---------- GHOST NUMERAL PARALLAX ---------- */
+  // Section numerals drift at a different speed than the section —
+  // the cheap Framer-style depth trick. Scrub (animated every scroll
+  // frame) but transform-only and only 6 elements, will-change set.
+  function initGhostParallax() {
+    const ghosts = gsap.utils.toArray('.section__ghost');
+    if (!ghosts.length) return;
+    ghosts.forEach((g) => {
+      gsap.fromTo(g,
+        { yPercent: -18 },
+        { yPercent: 18, ease: 'none',
+          scrollTrigger: {
+            trigger: g.parentElement, start: 'top bottom', end: 'bottom top',
+            scrub: 0.6
+          } }
+      );
+    });
+  }
+
+  /* ---------- SKILL PILL HOVER FLOAT ---------- */
+  // Infinite gentle bob on hover — anime.js owns the transform AFTER
+  // GSAP's entrance (clearProps: 'all' hands it off cleanly).
+  function initSkillFloat() {
+    if (prefersReduced || typeof anime === 'undefined') return;
+    document.querySelectorAll('.skill-pill').forEach((pill) => {
+      let anim = null;
+      pill.addEventListener('mouseenter', () => {
+        if (anim) anim.pause();
+        anim = anime({
+          targets: pill,
+          translateY: [{ value: 0 }, { value: -6, duration: 500, easing: 'easeInOutQuad' }, { value: 0, duration: 500, easing: 'easeInOutQuad' }],
+          duration: 1000, loop: true, autoplay: true
+        });
+      });
+      pill.addEventListener('mouseleave', () => {
+        if (anim) { anim.pause(); anim.seek(0); }
+      });
+    });
+  }
+
+  /* ---------- SCRAMBLE HOVER (anime.js) ---------- */
+  // Nav links + footer links decode a shuffled version of their own
+  // text on hover — cheap: only runs during hover, never on scroll.
+  function initScrambleHover() {
+    if (prefersReduced || typeof anime === 'undefined') return;
+    document.querySelectorAll('.nav__link, .footer__link').forEach((el) => {
+      const original = el.textContent;
+      if (original.length < 2) return;
+      let active = null;
+      el.addEventListener('mouseenter', () => {
+        if (active) active.pause();
+        // Scramble frames: shuffled charset, converges to the original.
+        const frames = 6;
+        active = anime({
+          targets: el,
+          textContent: [0, 1],
+          duration: 450,
+          easing: 'easeOutQuad',
+          update: (a) => {
+            const t = a.progress / 100; // 0..1
+            const done = Math.floor(t * original.length);
+            let out = '';
+            for (let i = 0; i < original.length; i++) {
+              out += i < done ? original[i] : 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 52)];
+            }
+            el.textContent = out;
+          },
+          complete: () => { el.textContent = original; }
+        });
+      });
+      el.addEventListener('mouseleave', () => {
+        if (active) { active.pause(); el.textContent = original; }
+      });
+    });
+  }
+
+  /* ---------- CARD SHINE SWEEP ---------- */
+  // One ::after gradient sweep per card on hover — compositor-friendly
+  // (translateX only), fires only on hover.
+  function initCardShine() {
+    if (prefersReduced || typeof anime === 'undefined') return;
+    document.querySelectorAll('.project-card, .card').forEach((card) => {
+      const shine = document.createElement('span');
+      shine.className = 'card-shine';
+      shine.setAttribute('aria-hidden', 'true');
+      card.appendChild(shine);
+      let anim = null;
+      card.addEventListener('mouseenter', () => {
+        if (anim) anim.pause();
+        anim = anime({
+          targets: shine,
+          translateX: ['-120%', '120%'],
+          duration: 700,
+          easing: 'easeInOutQuad'
+        });
+      });
+      card.addEventListener('mouseleave', () => {
+        if (anim) { anim.pause(); anim.seek(0); }
+      });
+    });
+  }
+
+  /* ---------- HERO MOUSE PARALLAX ---------- */
+  // Content shifts a few px toward the cursor — quickTo, compositor.
+  function initHeroMouseParallax() {
+    if (prefersReduced || isCoarse) return;
+    const grid = document.querySelector('.hero__grid');
+    if (!grid) return;
+    const xTo = gsap.quickTo(grid, 'x', { duration: 0.5, ease: 'power3' });
+    const yTo = gsap.quickTo(grid, 'y', { duration: 0.5, ease: 'power3' });
+    window.addEventListener('mousemove', (e) => {
+      const nx = (e.clientX / window.innerWidth - 0.5) * 20; // ±10px
+      const ny = (e.clientY / window.innerHeight - 0.5) * 14; // ±7px
+      xTo(nx); yTo(ny);
+    }, { passive: true });
+  }
+
   /* ---------- BOOT ---------- */
   function boot(hasGsap) {
     initTheme();
@@ -387,6 +504,10 @@
     initSpotlights();
     initThree();
     initAnimeTicker();
+    initSkillFloat();
+    initScrambleHover();
+    initCardShine();
+    initHeroMouseParallax();
     onScrollNav();
     // Lenis is the single scroll source; native scroll listener removed —
     // its redundant layout reads were the per-frame jank. Listeners that
@@ -430,16 +551,19 @@
       // autoSplit: re-splits if fonts finish loading late, avoiding wrong
       // line breaks (gsap-plugins); CSS .hero__name-char { opacity: 0 }
       // is the FOUC-safe hidden state, removed on completion.
-      gsap.fromTo('.hero__eyebrow', { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: 0.8, delay: 0.2, ease: 'power3.out', overwrite: 'auto' });
+      gsap.fromTo('.hero__eyebrow', { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: 0.8, delay: 0.2, ease: 'power3.out', overwrite: 'auto', clearProps: 'all' });
       gsap.fromTo('.hero__line:not(.hero__line--name)',
         { y: 80, autoAlpha: 0 },
-        { y: 0, autoAlpha: 1, duration: 1, stagger: 0.12, delay: 0.35, ease: 'power4.out' }
+        { y: 0, autoAlpha: 1, duration: 1, stagger: 0.12, delay: 0.35, ease: 'power4.out', clearProps: 'all' }
       );
-      // Section titles — fromTo so once:true kill preserves final state
+      // Section titles — springy Framer-style pop. clearProps: tween
+      // ends at natural state so no finished animation pins a GPU layer
+      // (the #1 hidden scroll-jank source on reveal-heavy sites).
       gsap.utils.toArray('.section__title').forEach((title) => {
         gsap.fromTo(title,
           { y: 50, autoAlpha: 0 },
-          { y: 0, autoAlpha: 1, duration: 0.9, ease: 'power3.out',
+          { y: 0, autoAlpha: 1, duration: 0.8, ease: 'back.out(1.4)',
+            clearProps: 'all',
             scrollTrigger: { trigger: title, start: 'top 85%', once: true } }
         );
       });
@@ -449,15 +573,18 @@
         gsap.fromTo(el,
           { y: 60, autoAlpha: 0 },
           { y: 0, autoAlpha: 1, duration: 1, ease: 'power3.out',
+            clearProps: 'all',
             scrollTrigger: { trigger: el, start: 'top 85%', once: true } }
         );
       });
 
-      // Hero CTA + stats (subtitle handled above)
-      gsap.fromTo('.hero__subtitle', { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: 0.8, delay: 0.8, ease: 'power3.out', overwrite: 'auto' });
-      gsap.fromTo('.hero__cta .btn', { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 0.7, stagger: 0.12, delay: 0.95, ease: 'power3.out', overwrite: 'auto' });
-      gsap.fromTo('.hero__stats', { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0, duration: 0.9, delay: 1.1, ease: 'power3.out', overwrite: 'auto' });
-      gsap.fromTo('.hero__scroll-hint', { autoAlpha: 0 }, { autoAlpha: 1, duration: 1, delay: 1.6, overwrite: 'auto' });
+      // Hero CTA + stats (subtitle handled above) — clearProps drops
+      // the layers once the entrance finishes (hero sits at scroll 0,
+      // but layers here still cost the compositor on every scroll pass).
+      gsap.fromTo('.hero__subtitle', { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: 0.8, delay: 0.8, ease: 'power3.out', overwrite: 'auto', clearProps: 'all' });
+      gsap.fromTo('.hero__cta .btn', { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 0.7, stagger: 0.12, delay: 0.95, ease: 'power3.out', overwrite: 'auto', clearProps: 'all' });
+      gsap.fromTo('.hero__stats', { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0, duration: 0.9, delay: 1.1, ease: 'power3.out', overwrite: 'auto', clearProps: 'all' });
+      gsap.fromTo('.hero__scroll-hint', { autoAlpha: 0 }, { autoAlpha: 1, duration: 1, delay: 1.6, overwrite: 'auto', clearProps: 'all' });
 
       // SplitText name reveal (after generic reveals so it wins the
       // name chars; GSAP 3.13+ free plugin, no membership needed)
@@ -491,6 +618,7 @@
       // Scrollspy + timeline rail (unique progress feel)
       initScrollspy();
       initTimelineProgress();
+      initGhostParallax();
 
       // Timeline: pinned scrub with stagger
       const timeline = document.getElementById('timeline');
@@ -508,21 +636,23 @@
         items.forEach((item, i) => {
           tl.fromTo(item,
             { x: i % 2 ? 80 : -80, autoAlpha: 0 },
-            { x: 0, autoAlpha: 1, duration: 0.9, ease: 'power3.out' },
+            { x: 0, autoAlpha: 1, duration: 0.9, ease: 'power3.out', clearProps: 'all' },
             i * 0.15
           );
         });
       }
 
-      // Skill pills stagger
+      // Skill pills stagger — clearProps frees the pill for anime's
+      // hover float (initSkillFloat) without transform conflicts.
       gsap.fromTo('.skill-pill',
         { scale: 0.6, autoAlpha: 0 },
         { scale: 1, autoAlpha: 1, duration: 0.6, stagger: 0.06, ease: 'back.out(1.7)',
+          clearProps: 'all',
           scrollTrigger: { trigger: '.skills__cloud', start: 'top 85%', once: true } }
       );
 
       // Nav entrance
-      gsap.fromTo('.nav__inner', { y: -20, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.7, delay: 0.3, ease: 'power3.out' });
+      gsap.fromTo('.nav__inner', { y: -20, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.7, delay: 0.3, ease: 'power3.out', clearProps: 'all' });
 
       ScrollTriggerLib.refresh();
   }

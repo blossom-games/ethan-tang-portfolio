@@ -241,6 +241,7 @@
     font-size: clamp(6rem, 16vw, 15rem); line-height: 1;
     color: transparent; -webkit-text-stroke: 1px var(--border-strong);
     pointer-events: none; z-index: 0; user-select: none;
+    will-change: transform; /* scrub-parallax runs every scroll frame */
   }
 
   /* Section headings shared */
@@ -273,6 +274,14 @@
     transition: opacity .35s;
   }
   .project-card:hover::after { opacity: 1; }
+  /* Shine sweep — ::after slot is taken by the spotlight, so a separate
+     span (JS-injected) carries the sweep; translateX-only → compositor. */
+  .card-shine {
+    position: absolute; inset: 0; z-index: 3; pointer-events: none;
+    transform: translateX(-120%);
+    background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, .12) 50%, transparent 60%);
+  }
+  .card-shine.is-visible { transform: translateX(120%); }
   .project-card:hover { border-color: var(--border-strong); box-shadow: 0 32px 80px -32px rgba(0, 0, 0, .5); }
   .project-card__media { aspect-ratio: 16 / 10; background: radial-gradient(60% 80% at 50% 20%, hsl(var(--card-hue) 80% 60% / .25), transparent 70%), var(--bg-elev); display: grid; place-items: center; }
   .project-card__thumb span { font-family: var(--font-display); font-size: var(--step-3); font-weight: 700; opacity: .25; }
@@ -296,7 +305,7 @@
 
   /* Skills cloud */
   .skills__cloud { display: flex; gap: var(--space-3); flex-wrap: wrap; }
-  .skill-pill { padding: var(--space-3) var(--space-6); border-radius: var(--radius-full); border: 1px solid var(--border-strong); font-family: var(--font-display); font-size: var(--step--1); color: var(--text-muted); transition: all .3s var(--ease-out-expo); }
+  .skill-pill { padding: var(--space-3) var(--space-6); border-radius: var(--radius-full); border: 1px solid var(--border-strong); font-family: var(--font-display); font-size: var(--step--1); color: var(--text-muted); transition: all .3s var(--ease-out-expo); will-change: transform; }
   .skill-pill:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-3px); }
 
   /* Contact */
