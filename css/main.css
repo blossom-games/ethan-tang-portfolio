@@ -167,12 +167,14 @@
   @media (pointer: coarse) { .cursor, .cursor-ring, .cursor-glow { display: none; } }
 
   /* Fluid cursor trail (WebGL sim by Pavel Dobryakov) — fixed fullscreen
-     layer; screen blend makes the glow pop on dark, vanish on light. */
+     layer. Blend mode is theme-dependent: screen glows over dark,
+     multiply tints over light. */
   #fluid {
     position: fixed; inset: 0; width: 100%; height: 100%;
     pointer-events: none; z-index: 2;
     mix-blend-mode: screen;
   }
+  html[data-theme="light"] #fluid { mix-blend-mode: multiply; }
   @media (prefers-reduced-motion: reduce) { #fluid { display: none; } }
 
   /* Scroll progress */

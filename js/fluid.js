@@ -3,12 +3,13 @@ const useFluidCursor = () => {
   resizeCanvas();
   let config = {
     SIM_RESOLUTION: 128,
-    DYE_RESOLUTION: 1440,
+    DYE_RESOLUTION: 720,   // was 1440 — a cursor trail doesn't need 2M px;
+                           // 4x fewer pixels to shade every frame
     CAPTURE_RESOLUTION: 512,
     DENSITY_DISSIPATION: 3.5,
     VELOCITY_DISSIPATION: 2,
     PRESSURE: 0.1,
-    PRESSURE_ITERATIONS: 20,
+    PRESSURE_ITERATIONS: 12, // was 20 — the pressure solver runs every frame
     CURL: 3,
     SPLAT_RADIUS: 0.2,
     SPLAT_FORCE: 6000,
@@ -1135,9 +1136,13 @@ const useFluidCursor = () => {
     [1.0, 0.431, 0.780],    // #ff6ec7
     [0.486, 0.424, 1.0],
   ];
+  // Splat brightness by theme: multiply blend (light) needs ~2x the
+  // intensity of screen blend (dark) to read against the white page.
+  const isLight = () => (document.documentElement.getAttribute('data-theme') === 'light');
   function generateColor() {
     const c = PALETTE[Math.floor(Math.random() * PALETTE.length)];
-    return { r: c[0] * 0.15, g: c[1] * 0.15, b: c[2] * 0.15 };
+    const m = isLight() ? 0.35 : 0.15;
+    return { r: c[0] * m, g: c[1] * m, b: c[2] * m };
   }
   function HSVtoRGB(h, s, v) {
     let r, g, b, i, f, p, q, t;
