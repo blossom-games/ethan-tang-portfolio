@@ -38,10 +38,14 @@
   /* ---------- MOBILE NAV TOGGLE ---------- */
   const navToggle = document.getElementById('navToggle');
   const navLinks = document.getElementById('navLinks');
+  // Desktop: nav is in-flow and visible — aria-hidden must not apply.
+  // Only the mobile menu (toggle visible) toggles aria-hidden.
+  const isMobileNav = () => window.matchMedia('(max-width: 640px)').matches;
   function syncNavAria(open) {
     navToggle.setAttribute('aria-expanded', String(open));
     navToggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
-    navLinks.setAttribute('aria-hidden', String(!open));
+    if (isMobileNav()) navLinks.setAttribute('aria-hidden', String(!open));
+    else navLinks.removeAttribute('aria-hidden');
     navLinks.classList.toggle('is-open', open);
   }
   if (navToggle && navLinks) {
@@ -71,6 +75,15 @@
     navLinks.addEventListener('click', (e) => {
       if (e.target.closest('a')) syncNavAria(false);
     });
+    // Resize across the 640px breakpoint: reset to desktop-visible state.
+    window.addEventListener('resize', () => {
+      if (!isMobileNav() && navToggle.getAttribute('aria-expanded') === 'true') {
+        syncNavAria(false);
+      } else if (!isMobileNav()) {
+        navLinks.classList.remove('is-open');
+        navLinks.removeAttribute('aria-hidden');
+      }
+    }, { passive: true });
   }
 
   /* ---------- THEME TOGGLE ---------- */
