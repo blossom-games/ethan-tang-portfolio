@@ -8,6 +8,14 @@
 
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const isCoarse = window.matchMedia('(pointer: coarse)').matches;
+  // Global perf observables — Lenis's scroll handler updates these; each
+  // consumer derives everything else per frame from the one cached value
+  // (one layout read, no re-querying).
+  const scrollState = { y: window.scrollY };
+  function updateScrollState() {
+    scrollState.y = window.scrollY;
+  }
+  window.__scrollState = scrollState;
 
   /* ---------- PRELOADER ---------- */
   const preloader = document.getElementById('preloader');
@@ -23,14 +31,9 @@
     nav.classList.toggle('is-scrolled', window.scrollY > 24);
   }
 
-  /* ---------- SCROLL PROGRESS (no lib needed) ---------- */
-  const progressBar = document.getElementById('scrollProgress');
-  function onScrollProgress() {
-    const h = document.documentElement;
-    const max = h.scrollHeight - h.clientHeight;
-    const p = max > 0 ? h.scrollTop / max : 0;
-    if (progressBar) progressBar.style.transform = `scaleX(${p})`;
-  }
+  /* ---------- SCROLL PROGRESS ---------- */
+  // Owned by Motion One's scroll() in index.html (module script) — the
+  // transform is updated off-thread there; no JS per frame needed here.
 
   /* ---------- THEME TOGGLE ---------- */
   const themeToggle = document.getElementById('themeToggle');
@@ -213,19 +216,128 @@
     });
   }
 
+  /* ---------- THREE.JS: hero starfield (WebGL) ---------- */
+  // Renders inside #heroCanvas — a fixed-size canvas that never moves
+  // with the DOM, so scrolling costs zero per-frame JS on this scene.
+  // GPU-composited, transform-only interactions (gsap-perf rules apply
+  // to WebGL too: geometry count is small, points are static positions).
+  function initThree() {
+    if (prefersReduced || isCoarse) return; // skip on mobile/reduced — perf
+    if (typeof THREE === 'undefined') return;
+    const canvas = document.getElementById('heroCanvas');
+    if (!canvas) return;
+    const hero = canvas.parentElement; // .hero
+    if (!hero) return;
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // cap — 2x wastes GPU
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 100);
+    camera.position.z = 3.5;
+
+    // Points cloud: 400 stars. BufferGeometry, static — uploaded once.
+    const count = 400;
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const hue = 260; // accent violet, matches --accent
+    for (let i = 0; i < count; i++) {
+      const r = 1.4 + Math.random() * 3.6;
+      const th = Math.random() * Math.PI * 2;
+      const ph = Math.acos(2 * Math.random() - 1);
+      positions[i * 3] = r * Math.sin(ph) * Math.cos(th);
+      positions[i * 3 + 1] = r * Math.sin(ph) * Math.sin(th);
+      positions[i * 3 + 2] = r * Math.cos(ph);
+      const c = new THREE.Color().setHSL(hue / 360, 0.8, 0.55 + Math.random() * 0.4);
+      colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    const mat = new THREE.PointsMaterial({ size: 0.03, vertexColors: true, transparent: true, opacity: 0.85, sizeAttenuation: true });
+    const stars = new THREE.Points(geo, mat);
+    scene.add(stars);
+
+    function size() {
+      const w = hero.clientWidth, h = hero.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    size();
+    window.addEventListener('resize', size, { passive: true });
+
+    // Slow ambient rotation — the only per-frame work. Cheap (one matrix).
+    let last = performance.now();
+    function raf(now) {
+      const dt = Math.min((now - last) / 1000, 0.05);
+      last = now;
+      stars.rotation.y += dt * 0.05;
+      stars.rotation.x += dt * 0.008;
+      renderer.render(scene, camera);
+      requestAnimationFrame(raf);
+    }
+    requestAnimationFrame(raf);
+  }
+
+  /* ---------- ANIME.JS: hero ticker (cycle + fade) ---------- */
+  // Replaces the ScrambleTextPlugin interval: anime.js owns the whole
+  // cycle — fade out, swap text, fade in, pause, repeat. One interval,
+  // compositor-friendly opacity tweens only.
+  function initAnimeTicker() {
+    const ticker = document.getElementById('ticker');
+    if (!ticker || typeof anime === 'undefined') return;
+    const phrases = ['student', 'builder', 'problem-solver', 'lynbrook', 'class of 2027'];
+    let p = 0;
+    ticker.textContent = phrases[0];
+    p = 1;
+    anime({
+      targets: ticker,
+      opacity: [0.35, 1],
+      duration: 600,
+      easing: 'easeOutQuad'
+    });
+    const iv = setInterval(() => {
+      anime({
+        targets: ticker,
+        opacity: 0.15,
+        duration: 200,
+        easing: 'easeInQuad',
+        complete: () => {
+          ticker.textContent = phrases[p % phrases.length];
+          p++;
+          anime({
+            targets: ticker,
+            opacity: 1,
+            duration: 350,
+            easing: 'easeOutQuad'
+          });
+        }
+      });
+    }, 2600);
+    ticker._animeIv = iv; // cleanup hook (not used by app, free for tests)
+  }
+
   /* ---------- SCROLLSPY (active nav link) ---------- */
+  // Cached section bounds (refreshed on resize + after load) — no
+  // offsetTop reads per scroll frame; scroll position comes from the
+  // shared scrollState, one layout read total.
   function initScrollspy() {
     const sections = gsap.utils.toArray('section[id]');
     const links = gsap.utils.toArray('.nav__link');
     if (!sections.length || !links.length) return;
     const map = new Map();
     links.forEach((l) => map.set(l.getAttribute('href').slice(1), l));
+    let bounds = [];
+    const measure = () => { bounds = sections.map((s) => ({ id: s.id, top: s.offsetTop })); };
+    measure();
+    window.addEventListener('resize', measure, { passive: true });
+    window.addEventListener('load', measure, { passive: true });
     let ticking = false;
     const update = () => {
       ticking = false;
-      const y = window.scrollY + window.innerHeight * 0.35;
+      const y = scrollState.y + window.innerHeight * 0.35;
       let current = null;
-      sections.forEach((s) => { if (s.offsetTop <= y) current = s.id; });
+      bounds.forEach((b) => { if (b.top <= y) current = b.id; });
       links.forEach((l) => l.classList.remove('is-active'));
       if (current && map.has(current)) map.get(current).classList.add('is-active');
     };
@@ -273,9 +385,18 @@
     initFallbackReveals(hasGsap);
     initTilt();
     initSpotlights();
+    initThree();
+    initAnimeTicker();
     onScrollNav();
-    onScrollProgress();
-    window.addEventListener('scroll', () => { onScrollNav(); onScrollProgress(); }, { passive: true });
+    // Lenis is the single scroll source; native scroll listener removed —
+    // its redundant layout reads were the per-frame jank. Listeners that
+    // must fire even without Lenis subscribe to Lenis' scroll event.
+    const lenis = window.__lenis;
+    if (lenis) {
+      lenis.on('scroll', () => { updateScrollState(); onScrollNav(); });
+    } else {
+      window.addEventListener('scroll', () => { updateScrollState(); onScrollNav(); }, { passive: true });
+    }
     hidePreloader();
   }
 
@@ -301,15 +422,9 @@
       initTimelineProgress();
       return;
     }
-      // Hero bg parallax — desktop only; scrub on low-end mobile adds jank
-      const heroBg = document.getElementById('heroBg');
-      if (heroBg && !isCoarse) {
-        gsap.to(heroBg, {
-          yPercent: 25,
-          ease: 'none',
-          scrollTrigger: { trigger: '#home', start: 'top top', end: 'bottom top', scrub: 0.6 }
-        });
-      }
+      // Hero bg parallax — replaced by the three.js starfield (a GSAP scrub
+      // on the DOM here meant per-frame layout; the WebGL scene is a fixed
+      // canvas, so scrolling touches nothing).
 
       // Hero content entrance — SplitText char reveal on the name.
       // autoSplit: re-splits if fonts finish loading late, avoiding wrong
@@ -370,29 +485,8 @@
       // After split, make the name chars magnetically reactive (unique interaction)
       initMagneticChars();
 
-      // Hero phrase ticker — scramble-decodes on interval (unique signature)
-      const ticker = document.getElementById('ticker');
-      if (ticker && typeof ScrambleTextPlugin !== 'undefined') {
-        gsap.registerPlugin(ScrambleTextPlugin);
-        const phrases = ['student', 'builder', 'problem-solver', 'lynbrook', 'class of 2027'];
-        let p = 0;
-        const next = () => {
-          ticker.textContent = phrases[p % phrases.length];
-          gsap.fromTo(ticker, { opacity: 0.35 }, { opacity: 1, duration: 0.4, ease: 'power2.out' });
-          p++;
-        };
-        next();
-        setInterval(() => {
-          gsap.to(ticker, {
-            opacity: 0.15, duration: 0.2, ease: 'power1.in',
-            onComplete() {
-              ticker.textContent = phrases[p % phrases.length];
-              gsap.to(ticker, { opacity: 1, duration: 0.35, ease: 'power2.out' });
-              p++;
-            }
-          });
-        }, 2600);
-      }
+      // Hero phrase ticker — anime.js cycles the phrase with a fade
+      // (initAnimeTicker, boot path). No ScrambleTextPlugin dependency.
 
       // Scrollspy + timeline rail (unique progress feel)
       initScrollspy();
@@ -440,7 +534,7 @@
     const LenisLib = typeof Lenis !== 'undefined' ? Lenis : window.Lenis;
     try {
       const lenis = new LenisLib({
-        duration: 0.9,
+        duration: 0.5,
         easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
         smoothWheel: true,
         wheelMultiplier: 1,
