@@ -273,27 +273,73 @@
     const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 100);
     camera.position.z = 3.5;
 
-    // Points cloud: 400 stars. BufferGeometry, static — uploaded once.
-    const count = 400;
-    const positions = new Float32Array(count * 3);
-    const colors = new Float32Array(count * 3);
+    // Layered starfield: three shells at different radii rotate at
+    // different speeds → parallax depth without any per-star work.
+    // BufferGeometry, static — uploaded once, never mutated.
     const hue = 260; // accent violet, matches --accent
-    for (let i = 0; i < count; i++) {
-      const r = 1.4 + Math.random() * 3.6;
-      const th = Math.random() * Math.PI * 2;
-      const ph = Math.acos(2 * Math.random() - 1);
-      positions[i * 3] = r * Math.sin(ph) * Math.cos(th);
-      positions[i * 3 + 1] = r * Math.sin(ph) * Math.sin(th);
-      positions[i * 3 + 2] = r * Math.cos(ph);
-      const c = new THREE.Color().setHSL(hue / 360, 0.8, 0.55 + Math.random() * 0.4);
-      colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    const mat = new THREE.PointsMaterial({ size: 0.03, vertexColors: true, transparent: true, opacity: 0.85, sizeAttenuation: true });
-    const stars = new THREE.Points(geo, mat);
-    scene.add(stars);
+    const layers = [];
+    [400, 250, 120].forEach((count, li) => {
+      const radius = 2 + li * 1.3;
+      const positions = new Float32Array(count * 3);
+      const colors = new Float32Array(count * 3);
+      for (let i = 0; i < count; i++) {
+        const r = radius + Math.random() * 0.8;
+        const th = Math.random() * Math.PI * 2;
+        const ph = Math.acos(2 * Math.random() - 1);
+        positions[i * 3] = r * Math.sin(ph) * Math.cos(th);
+        positions[i * 3 + 1] = r * Math.sin(ph) * Math.sin(th);
+        positions[i * 3 + 2] = r * Math.cos(ph);
+        const c = new THREE.Color().setHSL(hue / 360, 0.8, 0.5 + Math.random() * 0.45);
+        colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      const mat = new THREE.PointsMaterial({
+        size: 0.03 * (li + 1), vertexColors: true, transparent: true,
+        opacity: 0.85, sizeAttenuation: true
+      });
+      const pts = new THREE.Points(geo, mat);
+      scene.add(pts);
+      layers.push(pts);
+    });
+
+    // Shooting star: a short line that streaks across occasionally.
+    const streakGeo = new THREE.BufferGeometry();
+    const streakPos = new Float32Array(6); // 2 vertices × 3
+    streakGeo.setAttribute('position', new THREE.BufferAttribute(streakPos, 3));
+    const streakMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
+    const streak = new THREE.Line(streakGeo, streakMat);
+    streak.frustumCulled = false;
+    scene.add(streak);
+    let streakTimer = 0;
+    const streakAnim = (t, dt) => {
+      streakTimer -= dt;
+      if (streakTimer <= 0 && streakMat.opacity <= 0.01) {
+        // Launch: random direction in the front hemisphere.
+        const s = 1.6 + Math.random() * 1.2;
+        const v = new THREE.Vector3(
+          (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, 0.5 + Math.random() * 0.5
+        ).normalize().multiplyScalar(s);
+        streak.userData = { p: new THREE.Vector3(0, 0, 2), v, t: 0, dur: 0.8 + Math.random() * 0.6 };
+        streakTimer = 4 + Math.random() * 6;
+      }
+      const d = streak.userData;
+      if (d) {
+        d.t += dt;
+        d.p.addScaledVector(d.v, dt);
+        // write the two vertices: head and tail (offset back along v)
+        const head = d.p;
+        const back = head.clone().sub(d.v.clone().multiplyScalar(0.3));
+        const arr = streakGeo.attributes.position.array;
+        arr[0] = head.x; arr[1] = head.y; arr[2] = head.z;
+        arr[3] = back.x; arr[4] = back.y; arr[5] = back.z;
+        streakGeo.attributes.position.needsUpdate = true;
+        const k = d.t / d.dur;
+        streakMat.opacity = k < 0.7 ? 0.9 : 0.9 * (1 - (k - 0.7) / 0.3);
+        if (k >= 1) { streakMat.opacity = 0; delete streak.userData; }
+      }
+    };
 
     function size() {
       const w = hero.clientWidth, h = hero.clientHeight;
@@ -304,13 +350,26 @@
     size();
     window.addEventListener('resize', size, { passive: true });
 
-    // Slow ambient rotation — the only per-frame work. Cheap (one matrix).
+    // Mouse-tilt camera (subtle) + slow ambient rotation.
+    const target = { tx: 0, ty: 0 };
+    window.addEventListener('mousemove', (e) => {
+      target.tx = (e.clientX / window.innerWidth - 0.5) * 0.6;
+      target.ty = (e.clientY / window.innerHeight - 0.5) * 0.4;
+    }, { passive: true });
+
     let last = performance.now();
     function raf(now) {
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
-      stars.rotation.y += dt * 0.05;
-      stars.rotation.x += dt * 0.008;
+      layers.forEach((l, i) => {
+        l.rotation.y += dt * (0.05 + i * 0.03); // parallax: outer shells spin faster
+        l.rotation.x += dt * 0.008;
+      });
+      // Camera eases toward the mouse target (cheap lerp, transform-only).
+      camera.position.x += (target.tx - camera.position.x) * 0.05;
+      camera.position.y += (target.ty - camera.position.y) * 0.05;
+      camera.lookAt(0, 0, 0);
+      streakAnim(now, dt);
       renderer.render(scene, camera);
       requestAnimationFrame(raf);
     }
@@ -413,6 +472,38 @@
         }
       }
     );
+  }
+
+  /* ---------- FLOATING ORBS (anime.js) ---------- */
+  // Ambient gradient blobs drift slowly — infinite transform-only
+  // tweens, GPU-composited, zero layout reads.
+  function initOrbFloat() {
+    if (prefersReduced || typeof anime === 'undefined') return;
+    const orbs = document.querySelectorAll('.orb');
+    orbs.forEach((orb, i) => {
+      anime({
+        targets: orb,
+        translateY: [{ value: 0 }, { value: -22 - i * 10, duration: 2600 + i * 600, easing: 'easeInOutSine' }, { value: 0, duration: 2600 + i * 600, easing: 'easeInOutSine' }],
+        duration: 5200 + i * 1200, loop: true, delay: i * 800
+      });
+    });
+  }
+
+  /* ---------- TEXT CHOREOGRAPHY (word-by-word leads) ---------- */
+  // SplitText word mask reveal on [data-choreo] paragraphs — play-once,
+  // clearProps'ed, transform-only. The "premium editorial" motion.
+  function initTextChoreography() {
+    const els = gsap.utils.toArray('[data-choreo]');
+    if (!els.length || typeof SplitText === 'undefined') return;
+    els.forEach((el) => {
+      const split = SplitText.create(el, { type: 'words', mask: 'words', wordsClass: 'choreo-word' });
+      gsap.fromTo(split.words,
+        { yPercent: 110 },
+        { yPercent: 0, autoAlpha: 1, duration: 0.8, stagger: 0.06, ease: 'power4.out',
+          clearProps: 'all',
+          scrollTrigger: { trigger: el, start: 'top 85%', once: true } }
+      );
+    });
   }
 
   /* ---------- GHOST NUMERAL PARALLAX ---------- */
@@ -542,6 +633,7 @@
     initSpotlights();
     initThree();
     initAnimeTicker();
+    initOrbFloat();
     initSkillFloat();
     initScrambleHover();
     initCardShine();
@@ -657,6 +749,7 @@
       initScrollspy();
       initTimelineProgress();
       initGhostParallax();
+      initTextChoreography();
 
       // Timeline: pinned scrub with stagger
       const timeline = document.getElementById('timeline');

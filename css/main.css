@@ -236,6 +236,17 @@
   .stat__num { font-family: var(--font-display); font-size: var(--step-3); font-weight: 700; background: var(--gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .stat__label { font-size: var(--step--1); color: var(--text-muted); }
   .hero__scroll-hint { position: absolute; bottom: var(--space-8); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: var(--space-3); color: var(--text-dim); font-size: var(--step--1); letter-spacing: .3em; text-transform: uppercase; }
+
+  /* Floating gradient orbs — GPU-composited blobs (transform-only,
+     anime.js-driven), layered behind content. */
+  .orb {
+    position: absolute; border-radius: 50%; filter: blur(70px);
+    pointer-events: none; z-index: 0; will-change: transform;
+  }
+  .orb--1 { width: 420px; height: 420px; top: 12%; left: -8%; background: radial-gradient(circle, rgba(124, 108, 255, .35), transparent 70%); }
+  .orb--2 { width: 340px; height: 340px; top: 55%; right: -6%; background: radial-gradient(circle, rgba(77, 214, 255, .28), transparent 70%); }
+  .orb--3 { width: 300px; height: 300px; bottom: 8%; left: 35%; background: radial-gradient(circle, rgba(255, 110, 199, .22), transparent 70%); }
+  @media (prefers-reduced-motion: reduce) { .orb { display: none; } }
   .hero__scroll-line { width: 1.5px; height: 48px; background: var(--border-strong); position: relative; overflow: hidden; }
   .hero__scroll-line::after { content: ''; position: absolute; inset: 0; background: var(--gradient); animation: scrollHint 2s var(--ease-out-expo) infinite; }
 
@@ -258,7 +269,7 @@
   /* Cards */
   .academics__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-6); }
   .card { container-type: inline-size; padding: var(--space-8); border-radius: var(--radius-lg); background: var(--bg-glass); border: 1px solid var(--border); transition: transform .4s var(--ease-out-expo), border-color .4s, box-shadow .4s; }
-  .card { position: relative; overflow: hidden; }
+  .card { position: relative; overflow: hidden; transform-style: preserve-3d; }
   .card::after {
     content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0;
     background: radial-gradient(280px circle at var(--mx, 50%) var(--my, 50%), rgba(124, 108, 255, .14), transparent 70%);
@@ -317,6 +328,25 @@
   .skills__cloud { display: flex; gap: var(--space-3); flex-wrap: wrap; }
   .skill-pill { padding: var(--space-3) var(--space-6); border-radius: var(--radius-full); border: 1px solid var(--border-strong); font-family: var(--font-display); font-size: var(--step--1); color: var(--text-muted); transition: all .3s var(--ease-out-expo); will-change: transform; }
   .skill-pill:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-3px); }
+
+  /* Animated gradient border — a conic gradient rotates behind a masked
+     border ring (the classic framer/motion.dev "gradient border" trick). */
+  .gradient-border {
+    position: relative;
+    border: 1px solid transparent !important;
+    background:
+      linear-gradient(var(--bg-elev), var(--bg-elev)) padding-box,
+      conic-gradient(from 0deg, var(--accent), var(--accent-2), var(--accent-3), var(--accent)) border-box;
+    background-size: 100% 100%, 200% 200%;
+  }
+  .gradient-border::after {
+    content: ''; position: absolute; inset: -1px; border-radius: inherit;
+    background: conic-gradient(from 0deg, var(--accent), var(--accent-2), var(--accent-3), var(--accent));
+    background-size: 200% 200%;
+    z-index: -1; filter: blur(6px); opacity: 0;
+    transition: opacity .4s;
+  }
+  .gradient-border:hover::after { opacity: .6; }
 
   /* Contact */
   .contact { text-align: center; }

@@ -123,6 +123,9 @@
     <section class="hero" id="home">
       <div class="hero__bg" id="heroBg" aria-hidden="true"></div>
       <canvas id="heroCanvas" aria-hidden="true"></canvas>
+      <div class="orb orb--1" aria-hidden="true"></div>
+      <div class="orb orb--2" aria-hidden="true"></div>
+      <div class="orb orb--3" aria-hidden="true"></div>
       <div class="hero__grid container">
         <div class="hero__content">
           <p class="hero__eyebrow reveal">Lynbrook High School · Class of 2027</p>
@@ -160,8 +163,9 @@
             solving problems, and learning how the world works.
           </p>
           <div class="about__body">
-            <p class="reveal">[Your detailed bio goes here — passions, goals, what drives you. Replace this placeholder with your story.]</p>
-            <p class="reveal">[What you're working on now. A project, a skill, a goal for the year.]</p>
+            <p class="reveal" data-choreo>I'm a student at <strong>Lynbrook High School</strong> who loves building things,
+            solving problems, and learning how the world works.</p>
+            <p class="reveal" data-choreo>[Your detailed bio goes here — passions, goals, what drives you. Replace this placeholder with your story.]</p>
           </div>
         </div>
       </div>
@@ -173,7 +177,7 @@
       <div class="container">
         <h2 class="section__title reveal"><span class="section__num">02</span> Academics</h2>
         <div class="academics__grid">
-          <article class="card reveal">
+          <article class="card reveal gradient-border">
             <h3 class="card__title">Courses</h3>
             <ul class="card__list">
               <li>[AP / Honors course 1]</li>
@@ -181,7 +185,7 @@
               <li>[AP / Honors course 3]</li>
             </ul>
           </article>
-          <article class="card reveal">
+          <article class="card reveal gradient-border">
             <h3 class="card__title">Interests</h3>
             <ul class="card__list">
               <li>[Subject you love]</li>
@@ -189,7 +193,7 @@
               <li>[Subject you love]</li>
             </ul>
           </article>
-          <article class="card reveal">
+          <article class="card reveal gradient-border">
             <h3 class="card__title">Honors</h3>
             <ul class="card__list">
               <li>[Academic honor 1]</li>
