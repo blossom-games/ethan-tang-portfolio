@@ -201,7 +201,7 @@
   .theme-toggle__icon { font-size: 1.1rem; transition: opacity .3s; }
 
   /* Buttons */
-  .btn { display: inline-block; padding: var(--space-4) var(--space-8); border-radius: var(--radius-full); font-family: var(--font-display); font-weight: 600; font-size: var(--step--1); letter-spacing: .02em; transition: transform .3s var(--ease-out-expo), box-shadow .3s, background .3s, color .3s, border-color .3s; will-change: transform; }
+  .btn { display: inline-block; padding: var(--space-4) var(--space-8); border-radius: var(--radius-full); font-family: var(--font-display); font-weight: 600; font-size: var(--step--1); letter-spacing: .02em; transition: transform .3s var(--ease-out-expo), box-shadow .3s, background .3s, color .3s, border-color .3s; }
   .btn--primary { background: var(--gradient); color: #fff; box-shadow: 0 8px 30px -8px rgba(124, 108, 255, .55); }
   .btn--primary:hover { box-shadow: 0 12px 40px -8px rgba(124, 108, 255, .75); transform: translateY(-2px); }
   .btn--ghost { border: 1px solid var(--border-strong); color: var(--text); }
@@ -228,7 +228,9 @@
   .hero__line { display: block; }
   .hero__line--name { background: var(--gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .hero__name-wrap { display: block; overflow: clip; }
-  .hero__name-char { display: inline-block; will-change: transform; }
+  /* No will-change here: the entrance is one-shot; a permanent layer per
+     char (~11) would be composited on every scroll frame forever. */
+  .hero__name-char { display: inline-block; }
   .hero__subtitle { margin-top: var(--space-6); font-size: var(--step-1); color: var(--text-muted); }
   .hero__cta { margin-top: var(--space-12); display: flex; gap: var(--space-4); flex-wrap: wrap; }
   .hero__stats { display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-8); border-radius: var(--radius-lg); background: var(--bg-glass); border: 1px solid var(--border); }
@@ -240,7 +242,10 @@
   /* Floating gradient orbs — GPU-composited blobs (transform-only,
      anime.js-driven), layered behind content. */
   .orb {
-    position: absolute; border-radius: 50%; filter: blur(70px);
+    position: absolute; border-radius: 50%;
+    /* No filter: blur() — moving a blurred layer re-rasterizes every
+       frame (the #1 jank source on Windows Chrome). The radial-gradient
+       falloff is already soft enough to read as a glow. */
     pointer-events: none; z-index: 0; will-change: transform;
   }
   .orb--1 { width: 420px; height: 420px; top: 12%; left: -8%; background: radial-gradient(circle, rgba(124, 108, 255, .35), transparent 70%); }
@@ -286,7 +291,9 @@
 
   /* Projects */
   .projects__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--space-6); }
-  .project-card { position: relative; border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden; background: var(--bg-elev); transition: transform .5s var(--ease-out-expo), box-shadow .5s, border-color .5s; transform-style: preserve-3d; will-change: transform; }
+  /* No will-change: tilt/shine are hover-only — a permanent layer per
+     card is wasted compositing cost on every scroll frame. */
+  .project-card { position: relative; border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden; background: var(--bg-elev); transition: transform .5s var(--ease-out-expo), box-shadow .5s, border-color .5s; transform-style: preserve-3d; }
   .project-card::after {
     content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0; z-index: 2;
     background: radial-gradient(320px circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, .09), transparent 70%);
@@ -326,7 +333,7 @@
 
   /* Skills cloud */
   .skills__cloud { display: flex; gap: var(--space-3); flex-wrap: wrap; }
-  .skill-pill { padding: var(--space-3) var(--space-6); border-radius: var(--radius-full); border: 1px solid var(--border-strong); font-family: var(--font-display); font-size: var(--step--1); color: var(--text-muted); transition: all .3s var(--ease-out-expo); will-change: transform; }
+  .skill-pill { padding: var(--space-3) var(--space-6); border-radius: var(--radius-full); border: 1px solid var(--border-strong); font-family: var(--font-display); font-size: var(--step--1); color: var(--text-muted); transition: all .3s var(--ease-out-expo); }
   .skill-pill:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-3px); }
 
   /* Animated gradient border — a conic gradient rotates behind a masked

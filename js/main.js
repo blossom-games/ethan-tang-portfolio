@@ -267,7 +267,9 @@
     const hero = canvas.parentElement; // .hero
     if (!hero) return;
 
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+    // antialias: false — MSAA 4x is the single biggest WebGL GPU cost;
+    // 0.03-sized points don't show aliasing, and the win is substantial.
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true, powerPreference: 'high-performance' });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // cap — 2x wastes GPU
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 100);
@@ -358,19 +360,30 @@
     }, { passive: true });
 
     let last = performance.now();
+    let running = true;
+    // Pause rendering entirely when the hero is off-screen — the scene
+    // is fixed inside #heroCanvas, so it only matters while visible.
+    const heroObserver = new IntersectionObserver((entries) => {
+      running = entries[0].isIntersecting;
+      if (running) last = performance.now(); // avoid a dt jump on resume
+    }, { threshold: 0 });
+    heroObserver.observe(hero);
+
     function raf(now) {
-      const dt = Math.min((now - last) / 1000, 0.05);
-      last = now;
-      layers.forEach((l, i) => {
-        l.rotation.y += dt * (0.05 + i * 0.03); // parallax: outer shells spin faster
-        l.rotation.x += dt * 0.008;
-      });
-      // Camera eases toward the mouse target (cheap lerp, transform-only).
-      camera.position.x += (target.tx - camera.position.x) * 0.05;
-      camera.position.y += (target.ty - camera.position.y) * 0.05;
-      camera.lookAt(0, 0, 0);
-      streakAnim(now, dt);
-      renderer.render(scene, camera);
+      if (running) {
+        const dt = Math.min((now - last) / 1000, 0.05);
+        last = now;
+        layers.forEach((l, i) => {
+          l.rotation.y += dt * (0.05 + i * 0.03); // parallax: outer shells spin faster
+          l.rotation.x += dt * 0.008;
+        });
+        // Camera eases toward the mouse target (cheap lerp, transform-only).
+        camera.position.x += (target.tx - camera.position.x) * 0.05;
+        camera.position.y += (target.ty - camera.position.y) * 0.05;
+        camera.lookAt(0, 0, 0);
+        streakAnim(now, dt);
+        renderer.render(scene, camera);
+      }
       requestAnimationFrame(raf);
     }
     requestAnimationFrame(raf);
