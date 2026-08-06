@@ -675,6 +675,30 @@
     });
   }
 
+  /* ---------- GAME-WORLD MOMENT: hero→About camera travel ---------- */
+  // As the hero scrolls out, the whole hero (canvas + content) pans down
+  // with the starfield still spinning — a "flying into the page" moment.
+  // Scroll-linked, transform-only on the hero, once per load. The
+  // pinned feel comes from the hero staying on screen while About slides
+  // in above it, then the hero releases and scrolls away.
+  function initHeroTravel() {
+    if (prefersReduced) return;
+    const hero = document.querySelector('.hero');
+    const about = document.getElementById('about');
+    if (!hero || !about) return;
+    // heroBg is the fixed parallax layer; the canvas is inside hero.
+    gsap.to(hero, {
+      yPercent: 100,
+      ease: 'none',
+      scrollTrigger: {
+        trigger: hero,
+        start: 'top top',
+        end: '+=100%', // travel lasts one hero-height of scroll
+        scrub: 0.6
+      }
+    });
+  }
+
   /* ---------- LIVING-SPACE SECTION SCENES (three.js) ---------- */
   // One shared renderer, three gated scenes — each canvas renders only
   // while its section is visible (IntersectionObserver), so idle
@@ -1039,6 +1063,7 @@
       initTimelineProgress();
       initGhostParallax();
       initTextChoreography();
+      initHeroTravel();
 
       // Timeline: pinned scrub with stagger
       const timeline = document.getElementById('timeline');
