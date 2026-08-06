@@ -825,15 +825,31 @@ const useFluidCursor = () => {
   initFramebuffers();
   let lastUpdateTime = Date.now();
   let colorUpdateTimer = 0.0;
+  let frameId = 0;
+  let idleFrames = 0;
+  // Perf: the sim only runs while there is motion to show. After a splat
+  // it needs ~15 frames for the dye to dissipate, then the loop stops —
+  // idle pages (most of a scroll session) cost ~zero GPU.
+  const startLoop = () => { if (!frameId) frameId = requestAnimationFrame(update); };
   function update() {
+    frameId = 0;
     const dt = calcDeltaTime();
     if (resizeCanvas()) initFramebuffers();
     updateColors(dt);
     applyInputs();
     step(dt);
     render(null);
-    requestAnimationFrame(update);
+    if (pointers[0].moved) idleFrames = 0;
+    else idleFrames++;
+    if (idleFrames < 15) {
+      frameId = requestAnimationFrame(update);
+    }
   }
+  // The first-move handler previously started the loop via update().
+  document.body.addEventListener('mousemove', function startLoopOnFirstMove() {
+    startLoop();
+    document.body.removeEventListener('mousemove', startLoopOnFirstMove);
+  });
   function calcDeltaTime() {
     let now = Date.now();
     let dt = (now - lastUpdateTime) / 1000;
@@ -1110,8 +1126,10 @@ const useFluidCursor = () => {
     pointer.texcoordY = 1.0 - posY / canvas.height;
     pointer.deltaX = correctDeltaX(pointer.texcoordX - pointer.prevTexcoordX);
     pointer.deltaY = correctDeltaY(pointer.texcoordY - pointer.prevTexcoordY);
+    // Perf: only splat on meaningful movement — sub-pixel jitter would
+    // otherwise keep the sim alive and splatting on every mousemove.
     pointer.moved =
-      Math.abs(pointer.deltaX) > 0 || Math.abs(pointer.deltaY) > 0;
+      Math.abs(pointer.deltaX) > 0.001 || Math.abs(pointer.deltaY) > 0.001;
     pointer.color = color;
   }
   function updatePointerUpData(pointer) {

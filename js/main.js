@@ -121,11 +121,12 @@
 
     // quickTo reuses a single tween per property instead of creating new
     // tweens on every mousemove (gsap-performance: mouse followers).
-    const ringXTo = gsap.quickTo(cursorRing, 'x', { duration: 0.3, ease: 'power3' });
-    const ringYTo = gsap.quickTo(cursorRing, 'y', { duration: 0.3, ease: 'power3' });
-    // Glow lags the ring slightly for depth.
-    const glowXTo = cursorGlow ? gsap.quickTo(cursorGlow, 'x', { duration: 0.55, ease: 'power3' }) : null;
-    const glowYTo = cursorGlow ? gsap.quickTo(cursorGlow, 'y', { duration: 0.55, ease: 'power3' }) : null;
+    // Timings: 0.12s ring / 0.25s glow — tight enough to feel attached,
+    // loose enough for the depth effect. (Was 0.3/0.55 — felt broken.)
+    const ringXTo = gsap.quickTo(cursorRing, 'x', { duration: 0.12, ease: 'power3' });
+    const ringYTo = gsap.quickTo(cursorRing, 'y', { duration: 0.12, ease: 'power3' });
+    const glowXTo = cursorGlow ? gsap.quickTo(cursorGlow, 'x', { duration: 0.25, ease: 'power3' }) : null;
+    const glowYTo = cursorGlow ? gsap.quickTo(cursorGlow, 'y', { duration: 0.25, ease: 'power3' }) : null;
 
     window.addEventListener('mousemove', (e) => {
       pos.x = e.clientX;
@@ -140,18 +141,8 @@
       el.addEventListener('mouseenter', () => cursorRing.classList.add('is-active'));
       el.addEventListener('mouseleave', () => cursorRing.classList.remove('is-active'));
     });
-
-    // Fluid cursor: tint the sim's palette to the site accent when the
-    // cursor is idle (imported module, guarded — no-op if unavailable).
-    const fluid = window.__fluid;
-    if (fluid) {
-      const tint = () => {
-        if (document.body.contains(cursor)) { // cursor element alive → idle
-          fluid.splatColor(124 / 255, 108 / 255, 255 / 255);
-        }
-      };
-      window.addEventListener('mousemove', tint, { passive: true });
-    }
+    // (The old fluid tint handler here was removed — it ran per-move and
+    // overwrote the sim's palette; the palette is already site-accented.)
   }
 
   /* ---------- MAGNETIC BUTTONS ---------- */
