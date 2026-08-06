@@ -206,6 +206,9 @@
   .nav__link.is-active::after { transform: scaleX(1); transform-origin: left; }
 
   .theme-toggle { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border-strong); display: grid; place-items: center; transition: transform .3s var(--ease-spring), background .3s, border-color .3s; flex-shrink: 0; }
+  .sound-toggle { display: inline-flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-full); border: 1px solid var(--border-strong); color: var(--text-muted); font-size: var(--step--1); transition: border-color .3s, color .3s; }
+  .sound-toggle:hover { border-color: var(--accent); color: var(--text); }
+  .sound-toggle[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
   .theme-toggle:hover { transform: rotate(25deg) scale(1.05); border-color: var(--accent); }
   .theme-toggle__icon { font-size: 1.1rem; transition: opacity .3s; }
 

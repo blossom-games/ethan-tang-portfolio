@@ -30,6 +30,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
   <script defer src="js/main.js"></script>
+  <script defer src="js/audio.js"></script>
   <!-- Fluid cursor trail: imported as ES module (fluid.js is a module) -->
   <script type="module" src="js/fluid-boot.js"></script>
   <!-- Motion One (vanilla companion to the motion.svelte.dev examples) —
@@ -99,10 +100,16 @@
         <a href="#achievements" class="nav__link">Achievements</a>
         <a href="#skills" class="nav__link">Skills</a>
         <a href="#contact" class="nav__link nav__link--cta">Contact</a>
+        <button class="sound-toggle" id="soundToggleMobile" aria-label="Toggle ambient sound" aria-pressed="false" hidden>
+          <span class="sound-toggle__icon">🔊</span> Sound
+        </button>
       </nav>
       <div class="nav__actions">
         <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
           <span class="theme-toggle__icon">☾</span>
+        </button>
+        <button class="sound-toggle" id="soundToggle" aria-label="Toggle ambient sound" aria-pressed="false" hidden>
+          <span class="sound-toggle__icon">🔊</span>
         </button>
         <button class="nav__toggle" id="navToggle" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks">
           <span class="nav__toggle-bar"></span>
@@ -114,6 +121,11 @@
   </header>
 
   <main id="main" tabindex="-1">
+
+    <!-- Scoped 3D canvases (living-space) — visibility-gated like the hero -->
+    <div class="scene-scope" id="sceneAbout" aria-hidden="true"><canvas></canvas></div>
+    <div class="scene-scope" id="sceneProjects" aria-hidden="true"><canvas></canvas></div>
+    <div class="scene-scope" id="sceneSkills" aria-hidden="true"><canvas></canvas></div>
 
     <!-- HERO -->
     <section class="hero" id="home">

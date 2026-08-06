@@ -138,7 +138,10 @@
     }, { passive: true });
 
     document.querySelectorAll('a, button, .project-card, .skill-pill').forEach((el) => {
-      el.addEventListener('mouseenter', () => cursorRing.classList.add('is-active'));
+      el.addEventListener('mouseenter', () => {
+        cursorRing.classList.add('is-active');
+        if (window.__audioHover) window.__audioHover(); // hover blip
+      });
       el.addEventListener('mouseleave', () => cursorRing.classList.remove('is-active'));
     });
     // (The old fluid tint handler here was removed — it ran per-move and
@@ -727,7 +730,11 @@
     // must fire even without Lenis subscribe to Lenis' scroll event.
     const lenis = window.__lenis;
     if (lenis) {
-      lenis.on('scroll', () => { updateScrollState(); onScrollNav(); });
+      lenis.on('scroll', (e) => {
+        updateScrollState(); onScrollNav();
+        // Ambient audio: pitch the bed with scroll speed (no-op if off).
+        if (window.__audioScroll) window.__audioScroll(e.velocity || 0);
+      });
     } else {
       window.addEventListener('scroll', () => { updateScrollState(); onScrollNav(); }, { passive: true });
     }
