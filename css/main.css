@@ -370,6 +370,11 @@
   }
   .gradient-border:hover::after { opacity: .6; }
 
+  /* Living-space section scenes — absolutely positioned canvases that
+     render only while their section is visible (IO-gated). */
+  .scene-scope { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+  .scene-scope canvas { display: block; }
+
   /* Contact */
   .contact { text-align: center; }
   .contact__lead { font-size: var(--step-2); font-family: var(--font-display); margin-bottom: var(--space-8); color: var(--text-muted); }

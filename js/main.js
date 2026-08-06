@@ -675,6 +675,119 @@
     });
   }
 
+  /* ---------- LIVING-SPACE SECTION SCENES (three.js) ---------- */
+  // One shared renderer, three gated scenes — each canvas renders only
+  // while its section is visible (IntersectionObserver), so idle
+  // sections cost zero GPU. Same perf discipline as the hero scene.
+  function initSectionScenes() {
+    if (prefersReduced || isCoarse) return;
+    if (typeof THREE === 'undefined') return;
+
+    const scopeEls = document.querySelectorAll('.scene-scope');
+    if (!scopeEls.length) return;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+
+    const scenes = [];
+    scopeEls.forEach((scope, si) => {
+      const canvas = scope.querySelector('canvas');
+      if (!canvas) return;
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+      camera.position.z = 6;
+      scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+      const key = new THREE.DirectionalLight(0xffffff, 0.9);
+      key.position.set(2, 3, 4);
+      scene.add(key);
+
+      const hue = 260 + si * 40; // violet → magenta shift per section
+      const color = new THREE.Color().setHSL(hue / 360, 0.8, 0.6);
+
+      if (si === 0) {
+        // About: floating abstract shapes (torus, icosahedron, box)
+        const geo = [
+          new THREE.TorusGeometry(0.7, 0.25, 12, 24),
+          new THREE.IcosahedronGeometry(0.8, 0),
+          new THREE.BoxGeometry(0.9, 0.9, 0.9)
+        ];
+        const mats = [0, 1, 2].map((i) => new THREE.MeshStandardMaterial({
+          color: new THREE.Color().setHSL((hue + i * 25) / 360, 0.75, 0.55),
+          metalness: 0.3, roughness: 0.4
+        }));
+        geo.forEach((g, i) => {
+          const m = new THREE.Mesh(g, mats[i]);
+          m.position.set((i - 1) * 2, Math.sin(i * 1.3) * 0.6, 0);
+          m.rotation.set(i * 0.6, i * 0.4, 0);
+          scene.add(m);
+          scenes.push({ obj: m, rotY: 0.4 + i * 0.1, scope, camera });
+        });
+      } else if (si === 1) {
+        // Projects: isometric blocks on a grid
+        for (let i = 0; i < 5; i++) {
+          const m = new THREE.Mesh(
+            new THREE.BoxGeometry(0.55, 0.55, 0.55),
+            new THREE.MeshStandardMaterial({ color, metalness: 0.4, roughness: 0.3 })
+          );
+          m.position.set((i - 2) * 1.1, 0, (i % 2) * 0.3);
+          m.rotation.set(0.6, i * 0.5, 0);
+          scene.add(m);
+          scenes.push({ obj: m, rotY: 0.2, scope, camera });
+        }
+      } else {
+        // Skills: constellation — points connected by thin lines
+        const pts = [];
+        const N = 12;
+        for (let i = 0; i < N; i++) {
+          const a = (i / N) * Math.PI * 2;
+          const r = 1.2 + Math.random() * 1.6;
+          pts.push(new THREE.Vector3(Math.cos(a) * r, Math.sin(a) * r * 0.7, (Math.random() - 0.5) * 1.5));
+        }
+        const ptGeo = new THREE.BufferGeometry().setFromPoints(pts);
+        const ptMat = new THREE.PointsMaterial({ color, size: 0.12, sizeAttenuation: true });
+        const points = new THREE.Points(ptGeo, ptMat);
+        scene.add(points);
+        // Simple line loop between successive points
+        const lineGeo = new THREE.BufferGeometry().setFromPoints(pts.concat([pts[0]]));
+        const lineMat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.5 });
+        scene.add(new THREE.Line(lineGeo, lineMat));
+        scenes.push({ obj: points, rotY: 0.3, scope, camera });
+      }
+    });
+
+    function size(scope) {
+      const canvas = scope.querySelector('canvas');
+      const w = scope.clientWidth, h = scope.clientHeight;
+      renderer.setSize(w, h, false);
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+    }
+    scenes.forEach((s) => size(s.scope));
+
+    let rafId = 0;
+    let last = performance.now();
+    function raf(now) {
+      rafId = 0;
+      const dt = Math.min((now - last) / 1000, 0.05);
+      last = now;
+      scenes.forEach((s) => {
+        s.obj.rotation.y += dt * s.rotY;
+        renderer.render(s.scene, s.camera);
+      });
+      rafId = requestAnimationFrame(raf);
+    }
+    scenes.forEach((s) => {
+      const io = new IntersectionObserver((entries) => {
+        const on = entries[0].isIntersecting;
+        if (on) {
+          size(s.scope);
+          if (!rafId) { last = performance.now(); rafId = requestAnimationFrame(raf); }
+        }
+      }, { threshold: 0 });
+      io.observe(s.scope);
+    });
+  }
+
   /* ---------- GHOST NUMERAL PARALLAX ---------- */
   // Section numerals drift at a different speed than the section —
   // the cheap Framer-style depth trick. Scrub (animated every scroll
@@ -801,6 +914,7 @@
     initTilt();
     initSpotlights();
     initThree();
+    initSectionScenes();
     initAnimeTicker();
     initOrbFloat();
     initSkillFloat();
