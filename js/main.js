@@ -413,12 +413,13 @@
     window.addEventListener('resize', size, { passive: true });
 
     // Mouse-tilt camera (subtle) + slow ambient rotation.
+    // Perf: only listen while the hero is visible — the listener is
+    // removed when the render loop stops (hero off-screen).
     const target = { tx: 0, ty: 0 };
-    window.addEventListener('mousemove', (e) => {
+    function onMouseTilt(e) {
       target.tx = (e.clientX / window.innerWidth - 0.5) * 0.6;
       target.ty = (e.clientY / window.innerHeight - 0.5) * 0.4;
-    }, { passive: true });
-
+    }
     let last = performance.now();
     let running = true;
     let rafId = 0;
@@ -429,9 +430,11 @@
       if (running) {
         last = performance.now(); // avoid a dt jump on resume
         if (!rafId) rafId = requestAnimationFrame(raf);
+        window.addEventListener('mousemove', onMouseTilt, { passive: true });
       } else if (rafId) {
         cancelAnimationFrame(rafId);
         rafId = 0;
+        window.removeEventListener('mousemove', onMouseTilt);
       }
     }, { threshold: 0 });
     heroObserver.observe(hero);
@@ -882,10 +885,21 @@
         touchMultiplier: 1.5
       });
 
-      // Drive Lenis with its own rAF loop — always running, even when
-      // GSAP has no active tweens (otherwise scrollTo never animates).
-      function raf(time) { lenis.raf(time); requestAnimationFrame(raf); }
-      requestAnimationFrame(raf);
+      // Drive Lenis with its own rAF loop. Perf: the loop stops when
+      // Lenis is idle (no velocity) — an idle page costs zero rAF ticks
+      // instead of 60fps of spring math. Restart on any interaction.
+      let rafId = 0;
+      let idleFrames = 0;
+      function raf(time) {
+        rafId = 0;
+        lenis.raf(time);
+        idleFrames = lenis.velocity === 0 ? idleFrames + 1 : 0;
+        if (idleFrames < 3) rafId = requestAnimationFrame(raf);
+      }
+      const startLoop = () => { idleFrames = 0; if (!rafId) rafId = requestAnimationFrame(raf); };
+      startLoop();
+      window.addEventListener('wheel', startLoop, { passive: true });
+      window.addEventListener('touchstart', startLoop, { passive: true });
 
       // Anchor links use Lenis
       document.querySelectorAll('a[href^="#"]').forEach((a) => {
