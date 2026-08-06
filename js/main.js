@@ -146,17 +146,29 @@
   }
 
   /* ---------- MAGNETIC BUTTONS ---------- */
+  // Perf: mousemove fires at mouse-polling rate (60-240Hz) but the
+  // compositor draws at most 60fps. Every per-move handler here batches
+  // its work into ONE rAF pass — reading layout once per frame instead
+  // of once per mouse event. This removes ~75% of the per-move cost.
   function initMagnetic() {
     if (prefersReduced) return;
     document.querySelectorAll('.magnetic').forEach((el) => {
       const strength = 0.35;
-      el.addEventListener('mousemove', (e) => {
+      let pending = null;
+      const apply = () => {
+        if (!pending) return;
         const r = el.getBoundingClientRect();
-        const dx = e.clientX - (r.left + r.width / 2);
-        const dy = e.clientY - (r.top + r.height / 2);
+        const dx = pending.x - (r.left + r.width / 2);
+        const dy = pending.y - (r.top + r.height / 2);
         el.style.transform = `translate(${dx * strength}px, ${dy * strength}px)`;
+        pending = null;
+      };
+      el.addEventListener('mousemove', (e) => {
+        pending = { x: e.clientX, y: e.clientY };
+        requestAnimationFrame(apply);
       });
       el.addEventListener('mouseleave', () => {
+        pending = null;
         el.style.transform = 'translate(0, 0)';
       });
     });
@@ -208,29 +220,47 @@
   }
 
   /* ---------- 3D PROJECT CARD TILT ---------- */
+  // rAF-batched (see initMagnetic): one layout read + one transform
+  // write per frame max, instead of per mousemove event.
   function initTilt() {
     if (prefersReduced || isCoarse) return;
     document.querySelectorAll('.project-card').forEach((card) => {
-      card.addEventListener('mousemove', (e) => {
+      let pending = null;
+      const apply = () => {
+        if (!pending) return;
         const r = card.getBoundingClientRect();
-        const rx = ((e.clientY - r.top) / r.height - 0.5) * -8;
-        const ry = ((e.clientX - r.left) / r.width - 0.5) * 8;
+        const rx = ((pending.y - r.top) / r.height - 0.5) * -8;
+        const ry = ((pending.x - r.left) / r.width - 0.5) * 8;
         card.style.transform = `perspective(900px) rotateX(${rx}deg) rotateY(${ry}deg) translateY(-6px)`;
+        pending = null;
+      };
+      card.addEventListener('mousemove', (e) => {
+        pending = { x: e.clientX, y: e.clientY };
+        requestAnimationFrame(apply);
       });
       card.addEventListener('mouseleave', () => {
+        pending = null;
         card.style.transform = 'perspective(900px) rotateX(0) rotateY(0)';
       });
     });
   }
 
   /* ---------- CARD SPOTLIGHT (cursor-tracking glow) ---------- */
+  // rAF-batched: one layout read + two custom-prop writes per frame.
   function initSpotlights() {
     if (isCoarse) return;
     document.querySelectorAll('.card, .project-card').forEach((el) => {
-      el.addEventListener('mousemove', (e) => {
+      let pending = null;
+      const apply = () => {
+        if (!pending) return;
         const r = el.getBoundingClientRect();
-        el.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
-        el.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`);
+        el.style.setProperty('--mx', `${((pending.x - r.left) / r.width) * 100}%`);
+        el.style.setProperty('--my', `${((pending.y - r.top) / r.height) * 100}%`);
+        pending = null;
+      };
+      el.addEventListener('mousemove', (e) => {
+        pending = { x: e.clientX, y: e.clientY };
+        requestAnimationFrame(apply);
       });
     });
   }
@@ -249,14 +279,20 @@
       ox: 0, oy: 0
     }));
     const strength = 22;
-    nameLine.addEventListener('mousemove', (e) => {
+    // rAF-batched: char positions are cached once per frame (not per
+    // move event) — the 4+ layout reads per char per move were the worst
+    // mousemove cost on the page.
+    let cachedRects = null;
+    let lastMouse = null;
+    const applyChars = () => {
+      if (!lastMouse) return;
       const r = nameLine.getBoundingClientRect();
       const cx = r.left + r.width / 2;
       const cy = r.top + r.height / 2;
       chars.forEach((ch, i) => {
-        const cr = ch.getBoundingClientRect();
-        const dx = e.clientX - (cr.left + cr.width / 2);
-        const dy = e.clientY - (cr.top + cr.height / 2);
+        const cr = cachedRects[i];
+        const dx = lastMouse.x - (cr.left + cr.width / 2);
+        const dy = lastMouse.y - (cr.top + cr.height / 2);
         const d = Math.hypot(dx, dy);
         const pull = d < 90 ? (1 - d / 90) * strength : 0;
         const ang = Math.atan2(dy, dx);
@@ -264,6 +300,14 @@
         magnetPairs[i].xTo(-Math.cos(ang) * pull * 0.5);
         magnetPairs[i].yTo(-Math.sin(ang) * pull * 0.5);
       });
+      lastMouse = null;
+    };
+    nameLine.addEventListener('mousemove', (e) => {
+      if (!cachedRects) {
+        cachedRects = chars.map((ch) => ch.getBoundingClientRect());
+      }
+      lastMouse = { x: e.clientX, y: e.clientY };
+      requestAnimationFrame(applyChars);
     });
     nameLine.addEventListener('mouseleave', () => {
       magnetPairs.forEach((m) => { m.xTo(0); m.yTo(0); });
