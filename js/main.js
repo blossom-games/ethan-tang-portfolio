@@ -35,6 +35,89 @@
   // Owned by Motion One's scroll() in index.html (module script) — the
   // transform is updated off-thread there; no JS per frame needed here.
 
+  /* ---------- THEATRICAL INTRO (one-shot particle burst) ---------- */
+  // Fires once when the preloader completes: the "ET" letters split into
+  // a particle field that explodes outward and fades. Canvas 2D, ~400
+  // particles for ~1s, then the canvas is removed — zero ongoing cost.
+  function initIntro() {
+    if (prefersReduced) return;
+    const canvas = document.getElementById('introCanvas');
+    if (!canvas) return;
+    const ctx2d = canvas.getContext('2d');
+    if (!ctx2d) return;
+
+    const DPR = Math.min(window.devicePixelRatio, 1.5);
+    const w = canvas.width = window.innerWidth * DPR;
+    const h = canvas.height = window.innerHeight * DPR;
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+
+    const N = 400;
+    const particles = [];
+    const cx = w / 2, cy = h / 2;
+    // Letters: a tiny "ET" glyph rasterized to particles via text sampling.
+    ctx2d.font = `700 ${Math.min(w, h) * 0.3}px 'Space Grotesk', sans-serif`;
+    ctx2d.textAlign = 'center';
+    ctx2d.textBaseline = 'middle';
+    ctx2d.fillStyle = '#fff';
+    ctx2d.fillText('ET', cx, cy);
+    const img = ctx2d.getImageData(0, 0, w, h).data;
+    ctx2d.clearRect(0, 0, w, h);
+    // Sample alpha>128 pixels → particle origins.
+    const origins = [];
+    const step = 6;
+    for (let y = 0; y < h; y += step) {
+      for (let x = 0; x < w; x += step) {
+        if (img[(y * w + x) * 4 + 3] > 128) origins.push([x, y]);
+      }
+    }
+    // If sampling found nothing (font not ready), fall back to a ring.
+    if (origins.length < 20) {
+      for (let i = 0; i < N; i++) {
+        const a = (i / N) * Math.PI * 2;
+        const r = Math.min(w, h) * 0.18;
+        origins.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
+      }
+    }
+    origins.forEach(([x, y]) => {
+      const ang = Math.atan2(y - cy, x - cx) + (Math.random() - 0.5) * 0.6;
+      const sp = 2 + Math.random() * 6;
+      particles.push({
+        x, y,
+        vx: Math.cos(ang) * sp,
+        vy: Math.sin(ang) * sp,
+        life: 0.7 + Math.random() * 0.5,
+        maxLife: 0.7 + Math.random() * 0.5,
+        size: 1 + Math.random() * 2
+      });
+    });
+
+    let running = true;
+    const start = performance.now();
+    function frame(now) {
+      if (!running) return;
+      const t = (now - start) / 1000;
+      ctx2d.clearRect(0, 0, w, h);
+      let alive = false;
+      particles.forEach((p) => {
+        if (p.life <= 0) return;
+        alive = true;
+        p.x += p.vx; p.y += p.vy;
+        p.vx *= 0.98; p.vy *= 0.98;
+        p.life -= 0.016;
+        ctx2d.globalAlpha = Math.max(0, p.life / p.maxLife) * 0.9;
+        ctx2d.fillStyle = '#7c6cff';
+        ctx2d.fillRect(p.x, p.y, p.size, p.size);
+      });
+      if (alive) requestAnimationFrame(frame);
+      else {
+        running = false;
+        canvas.remove();
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
   /* ---------- MOBILE NAV TOGGLE ---------- */
   const navToggle = document.getElementById('navToggle');
   const navLinks = document.getElementById('navLinks');
@@ -739,6 +822,8 @@
       window.addEventListener('scroll', () => { updateScrollState(); onScrollNav(); }, { passive: true });
     }
     hidePreloader();
+    // Theatrical intro: burst as the preloader fades out.
+    setTimeout(initIntro, 250);
   }
 
   /* ---------- GSAP PATH ---------- */

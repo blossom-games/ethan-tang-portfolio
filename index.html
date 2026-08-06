@@ -79,6 +79,7 @@
   <div class="preloader" id="preloader" aria-hidden="true">
     <div class="preloader__text">ET</div>
   </div>
+  <canvas id="introCanvas" aria-hidden="true" class="intro-canvas"></canvas>
 
   <!-- Custom cursor + spotlight -->
   <div class="cursor" id="cursor" aria-hidden="true"></div>
@@ -126,6 +127,12 @@
     <div class="scene-scope" id="sceneAbout" aria-hidden="true"><canvas></canvas></div>
     <div class="scene-scope" id="sceneProjects" aria-hidden="true"><canvas></canvas></div>
     <div class="scene-scope" id="sceneSkills" aria-hidden="true"><canvas></canvas></div>
+
+    <!-- Theatrical intro: canvas burst + overlay -->
+    <div class="intro" id="intro" aria-hidden="true">
+      <canvas id="introCanvas2" aria-hidden="true"></canvas>
+      <div class="intro__mask" id="introMask" aria-hidden="true"></div>
+    </div>
 
     <!-- HERO -->
     <section class="hero" id="home">
